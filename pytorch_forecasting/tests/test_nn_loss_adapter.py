@@ -270,6 +270,7 @@ def test_nn_loss_adapter_list_pred_error():
 
 def test_tft_cross_entropy_on_discrete_target(tmp_path):
     """TFT + CrossEntropyLoss works when the target is discrete class labels."""
+    from lightning import Trainer
     from lightning.pytorch.loggers import TensorBoardLogger
 
     from pytorch_forecasting.data.data_module import (
@@ -300,7 +301,7 @@ def test_tft_cross_entropy_on_discrete_target(tmp_path):
         output_size=n_classes,
         hidden_size=16,
         attention_head_size=2,
-        trainer_kwargs=dict(
+        trainer=Trainer(
             max_epochs=1,
             limit_train_batches=2,
             limit_val_batches=1,

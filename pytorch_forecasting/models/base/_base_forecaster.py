@@ -1,9 +1,10 @@
+import inspect
 from pathlib import Path
 import pickle
 from typing import Any, Optional, Union
 
 from lightning import Trainer
-from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.callbacks import ModelCheckpoint, ModelSummary
 from lightning.pytorch.core.datamodule import LightningDataModule
 import numpy as np
 import torch
@@ -14,16 +15,33 @@ from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.models.base._base_object import _BasePtObject_v2
 
 
+def _clone_trainer(trainer: Trainer) -> Trainer:
+    """Return a new ``Trainer`` configured like ``trainer``."""
+    kwargs = {
+        name: getattr(trainer, name)
+        for name in inspect.signature(Trainer.__init__).parameters
+        if name != "self" and hasattr(trainer, name)
+    }
+    kwargs.pop("accelerator")  # set through the strategy instance
+    kwargs["logger"] = trainer.loggers or False
+    callbacks = trainer.callbacks
+    kwargs["enable_checkpointing"] = any(
+        isinstance(c, ModelCheckpoint) for c in callbacks
+    )
+    kwargs["enable_progress_bar"] = trainer.progress_bar_callback is not None
+    kwargs["enable_model_summary"] = any(isinstance(c, ModelSummary) for c in callbacks)
+    return Trainer(**kwargs)
+
+
 class BaseForecaster(_BasePtObject_v2):
     """
     Base forecaster class acting as a high-level wrapper for the ptf workflow.
 
     Parameters
     ----------
-    trainer_kwargs : dict, optional
-        Keyword arguments for ``lightning.Trainer``. ``fit`` builds a new trainer
-        from them on every call, unless a trainer is passed to ``fit`` directly.
-        Defaults to ``Trainer()``.
+    trainer : lightning.Trainer, optional
+        Each ``fit`` trains on a new trainer with this configuration. Defaults
+        to ``Trainer()``.
     datamodule : LightningDataModule, optional
         A configured but data-less datamodule; ``fit`` attaches the data with
         ``with_data``. Defaults to ``get_datamodule_cls()()``, or to the
@@ -34,11 +52,11 @@ class BaseForecaster(_BasePtObject_v2):
 
     def __init__(
         self,
-        trainer_kwargs: dict | None = None,
+        trainer: Trainer | None = None,
         datamodule: Any = None,
         ckpt_path: str | Path | None = None,
     ):
-        self.trainer_kwargs = trainer_kwargs
+        self.trainer = trainer
         self.datamodule = datamodule
         self.ckpt_path = ckpt_path
         super().__init__()
@@ -175,7 +193,9 @@ class BaseForecaster(_BasePtObject_v2):
     def _resolve_trainer(self, trainer: Trainer | None) -> Trainer:
         if trainer is not None:
             return trainer
-        return Trainer(**(self.trainer_kwargs or {}))
+        if self.trainer is None:
+            return Trainer()
+        return _clone_trainer(self.trainer)
 
     def _load_dataloader(self, data: TimeSeries) -> DataLoader:
         """Build the prediction dataloader, with the transforms fitted in ``fit``."""
@@ -296,8 +316,9 @@ class BaseForecaster(_BasePtObject_v2):
             The data to fit on. The datamodule splits it into training and
             validation data.
         trainer : lightning.Trainer, optional
-            Used as-is for this call instead of building one from
-            ``trainer_kwargs``.
+            Used as-is for this call instead of a copy of the one given to
+            ``__init__``. A trainer whose fit loop has already finished will
+            not train again.
         save_ckpt : bool, default=True
             If True, save the best model checkpoint and the `datamodule_cfg`.
         ckpt_dir : Union[str, Path], default="checkpoints"
