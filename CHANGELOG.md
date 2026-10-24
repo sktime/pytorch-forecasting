@@ -1,5 +1,23 @@
 # Release Notes
 
+## v1.8.1
+
+Feature and maintenance update.
+
+### Highlights
+
+* added option to pre calculate tensors in `TimeSeriesDataSet` by setting `precompute=True`.
+
+### Enhancements
+
+* [ENH] Precompute data to massively accelerate training by ~2000% in GPU by @jobs-git in https://github.com/sktime/pytorch-forecasting/pull/1850
+* [ENH] Added test for `TimeSeriesDataSet` when `precompute=True` by @jobs-git in https://github.com/sktime/pytorch-forecasting/pull/1850
+* [ENH] Added test to check batch shape mismatch between precompute=True and False by @jobs-git in https://github.com/sktime/pytorch-forecasting/pull/1850
+
+### All Contributors
+
+@jobs-git
+
 ## v1.8.0 and v2.0-beta-2
 release focusing on:
 - A new shared documentation for v1 and v2.0-beta
