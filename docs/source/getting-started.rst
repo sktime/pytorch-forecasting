@@ -1,6 +1,13 @@
 Getting started
 ===============
 
+.. admonition::
+   **Try the API v2 pre-release!**
+
+   | A New API version 2 is in development. Try it out before release: :doc:`v2 API Reference <api_v2>`
+   | **Caution: v2 is WIP and unstable. Not yet production-ready.**
+
+
 .. _getting-started:
 
 
@@ -9,31 +16,12 @@ Installation
 
 .. _install:
 
-If you are working Windows, you need to first install PyTorch with
+You can install ``pytorch-forecasting`` using:
 
 .. code-block:: bash
-
-    pip install torch -f https://download.pytorch.org/whl/torch_stable.html
-
-Otherwise, you can proceed with
-
-.. code-block:: bash
-
     pip install pytorch-forecasting
 
-
-Alternatively, to install the package via ``conda``:
-.. code-block:: bash
-
-    conda install pytorch-forecasting pytorch>=1.7 -c pytorch -c conda-forge
-
-PyTorch Forecasting is now installed from the conda-forge channel while PyTorch is installed from the pytorch channel.
-
-To use the MQF2 loss (multivariate quantile loss), also install
-
-.. code-block:: bash
-
-    pip install pytorch-forecasting[mqf2]
+For special cases (like specific ``torch`` versions or to install the package for the use of the MQF2 loss), please look at out :doc:`Installation Guide <installation>`.
 
 
 Usage
@@ -151,11 +139,8 @@ Example
 Main API
 ---------
 
-.. currentmodule:: pytorch_forecasting
+.. toctree::
+    :maxdepth: 2
 
-.. moduleautosummary::
-   :toctree: api
-   :template: custom-module-template.rst
-   :recursive:
-
-   pytorch_forecasting
+    API v1 <api>
+    API v2 <api_v2>

@@ -377,3 +377,23 @@ def test_metadata_structure(sample_data):
 
     assert metadata["col_known"]["feature1"] == "K"
     assert metadata["col_known"]["feature2"] == "U"
+
+
+def test_group_index():
+    """Ensure group indices are contiguous and deterministic.
+
+    Regression guard: older code used `hash(str(group_id))`, which could yield
+    non-contiguous ids and unstable mappings.
+    """
+
+    data = []
+    for gid in ["aa", "bb", "cc", "dd"]:
+        for t in range(3):
+            data.append({"gid": gid, "time": t, "target": t})
+
+    df = pd.DataFrame(data)
+    ts = TimeSeries(data=df, time="time", target="target", group=["gid"])
+
+    group_indices = [int(ts[i]["group"][0]) for i in range(len(ts))]
+
+    assert group_indices == list(range(len(ts)))

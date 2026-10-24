@@ -245,23 +245,37 @@ class TorchMetricWrapper(Metric):
         return f"WrappedTorchmetric({repr(self.torchmetric)})"
 
 
-def convert_torchmetric_to_pytorch_forecasting_metric(
-    metric: LightningMetric,
-) -> Metric:
+def coerce_to_pytorch_forecasting_metric(
+    metric: LightningMetric | torch.nn.Module,
+) -> Metric | torch.nn.Module:
     """
-    If necessary, convert a torchmetric to a PyTorch Forecasting metric that
-    works with PyTorch Forecasting models.
+    Coerce a loss or metric into something usable by PyTorch Forecasting models.
 
-    Args:
-        metric (LightningMetric): metric to (potentially) convert
+    Accepts ptf metrics, plain ``torch.nn`` losses, and torchmetrics metrics.
 
-    Returns:
-        Metric: PyTorch Forecasting metric
+    * Already a ptf ``Metric`` / ``MultiLoss`` / ``CompositeMetric`` → unchanged
+    * Plain ``torch.nn`` loss module (e.g. ``nn.MSELoss()``) → ``NNLossAdapter``
+    * Other torchmetrics ``Metric`` → ``TorchMetricWrapper``
+
+    Parameters
+    ----------
+    metric :
+        Metric or loss to (potentially) adapt.
+
+    Returns
+    -------
+    Metric or torch.nn.Module
+        Loss/metric usable in ptf training (``forward(y_pred, y_actual)``).
     """
-    if not isinstance(metric, Metric | MultiLoss | CompositeMetric):
-        return TorchMetricWrapper(metric)
-    else:
+    from pytorch_forecasting.metrics.nn_loss_adapter import NNLossAdapter
+
+    if isinstance(metric, (Metric, MultiLoss, CompositeMetric, NNLossAdapter)):
         return metric
+
+    # bare torch.nn loss (nn.Module, but not a torchmetrics Metric)
+    if isinstance(metric, torch.nn.Module) and not isinstance(metric, LightningMetric):
+        return NNLossAdapter(metric)
+    return TorchMetricWrapper(metric)
 
 
 class MultiLoss(LightningMetric):
@@ -286,9 +300,7 @@ class MultiLoss(LightningMetric):
             metrics
         ), "Number of weights has to match number of metrics"
 
-        self.metrics = [
-            convert_torchmetric_to_pytorch_forecasting_metric(m) for m in metrics
-        ]
+        self.metrics = [coerce_to_pytorch_forecasting_metric(m) for m in metrics]
         self.weights = weights
 
         super().__init__()
@@ -689,18 +701,22 @@ class CompositeMetric(LightningMetric):
         return self._metrics[0].to_quantiles(y_pred, **kwargs)
 
     def __add__(self, metric: LightningMetric):
+        new_metrics = list(self._metrics)
+        new_weights = list(self._weights)
         if isinstance(metric, self.__class__):
-            self._metrics.extend(metric._metrics)
-            self._weights.extend(metric._weights)
+            new_metrics.extend(metric._metrics)
+            new_weights.extend(metric._weights)
         else:
-            self._metrics.append(metric)
-            self._weights.append(1.0)
+            new_metrics.append(metric)
+            new_weights.append(1.0)
 
-        return self
+        result = CompositeMetric(metrics=new_metrics, weights=new_weights)
+        return result
 
     def __mul__(self, multiplier: float):
-        self._weights = [w * multiplier for w in self._weights]
-        return self
+        new_weights = [w * multiplier for w in self._weights]
+        result = CompositeMetric(metrics=list(self._metrics), weights=new_weights)
+        return result
 
     __rmul__ = __mul__
 
