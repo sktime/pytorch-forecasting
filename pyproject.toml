@@ -206,7 +206,7 @@ addopts = [
     "--no-cov-on-fail"
 ]
 markers = []
-testpaths = ["tests/", "pytorch_forecasting/tests/"]
+testpaths = ["tests/", "pytorch_forecasting/"]
 log_cli_level = "ERROR"
 log_format = "%(asctime)s %(levelname)s %(message)s"
 log_date_format = "%Y-%m-%d %H:%M:%S"
