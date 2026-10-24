@@ -187,6 +187,12 @@ class TorchMetricWrapper(Metric):
     def _wrap_compute(self, compute: Callable) -> Callable:
         return compute
 
+    def set_dtype(self, dst_type: str | torch.dtype) -> "TorchMetricWrapper":
+        """Transfer the wrapper and its underlying metric to a dtype."""
+        super().set_dtype(dst_type)
+        self.torchmetric.set_dtype(dst_type)
+        return self
+
     def reset(self) -> None:
         self.torchmetric.reset()
 
@@ -416,6 +422,13 @@ class MultiLoss(LightningMetric):
     ) -> None:
         # No syncing required here. syncing will be done in metrics
         pass
+
+    def set_dtype(self, dst_type: str | torch.dtype) -> "MultiLoss":
+        """Transfer the composite and each underlying metric to a dtype."""
+        super().set_dtype(dst_type)
+        for metric in self.metrics:
+            metric.set_dtype(dst_type)
+        return self
 
     def reset(self) -> None:
         for metric in self.metrics:
@@ -661,6 +674,13 @@ class CompositeMetric(LightningMetric):
     ) -> None:
         # No syncing required here. syncing will be done in metrics
         pass
+
+    def set_dtype(self, dst_type: str | torch.dtype) -> "CompositeMetric":
+        """Transfer the composite and each underlying metric to a dtype."""
+        super().set_dtype(dst_type)
+        for metric in self._metrics:
+            metric.set_dtype(dst_type)
+        return self
 
     def reset(self) -> None:
         for metric in self._metrics:
