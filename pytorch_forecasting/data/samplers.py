@@ -152,7 +152,7 @@ class TimeSynchronizedBatchSampler(GroupedSampler):
         data_source = sampler.data_source
         index = data_source.index
         # get groups, i.e. group all samples by first predict time
-        last_time = data_source.data["time"][index["index_end"].to_numpy()].numpy()
+        last_time = data_source.data["time"][index["index_end"].tolist()].numpy()
         decoder_lengths = data_source.calculate_decoder_length(
             last_time, index.sequence_length
         )

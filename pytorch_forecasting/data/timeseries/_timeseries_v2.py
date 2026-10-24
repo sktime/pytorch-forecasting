@@ -4,7 +4,6 @@ Timeseries dataset - v2 prototype.
 Beta version, experimental - use for testing but not in production.
 """
 
-from typing import Optional, Union
 from warnings import warn
 
 import numpy as np
@@ -141,6 +140,8 @@ class TimeSeries(Dataset):
         else:
             self._groups = {"_single_group": self.data.index}
             self._group_ids = ["_single_group"]
+        # create mapping from group id to index for efficient lookup
+        self._group_to_idx = {gid: i for i, gid in enumerate(self._group_ids)}
 
         self._prepare_metadata()
 
@@ -250,7 +251,7 @@ class TimeSeries(Dataset):
             "t": data_vals,
             "y": torch.tensor(data_tgt_vals),
             "x": torch.tensor(data_feat_vals),
-            "group": torch.tensor([hash(str(group_id))]),
+            "group": torch.tensor([self._group_to_idx[group_id]], dtype=torch.long),
             # PyTorch wants writeable arrays
             "st": torch.tensor(
                 data[_static].iloc[0].to_numpy(copy=True) if _static else []

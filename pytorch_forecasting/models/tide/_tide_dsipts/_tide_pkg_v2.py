@@ -8,7 +8,14 @@ class TIDE_pkg_v2(Base_pkg):
 
     _tags = {
         "info:name": "TIDE",
-        "authors": ["fbk_dsipts"],
+        "authors": ["fbk_dsipts", "phoeenniixx"],
+        "info:compute": 3,
+        "info:y_type": ["numeric"],
+        "capability:exogenous": True,
+        "capability:multivariate": True,
+        "capability:pred_int": False,
+        "capability:flexible_history_length": False,
+        "capability:cold_start": False,
     }
 
     @classmethod
@@ -39,6 +46,8 @@ class TIDE_pkg_v2(Base_pkg):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
+        import torch.nn as nn
+
         from pytorch_forecasting.metrics import MAE, MAPE
 
         params = [
@@ -48,6 +57,7 @@ class TIDE_pkg_v2(Base_pkg):
                 n_add_enc=1,
                 n_add_dec=1,
                 dropout_rate=0.1,
+                loss=nn.MSELoss(),
             ),
             dict(
                 hidden_size=32,

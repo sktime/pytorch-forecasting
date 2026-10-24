@@ -1,5 +1,12 @@
 Data
-=====
+====
+
+.. admonition::
+   **Try the API v2 pre-release!**
+
+   | You are viewing Documentation of v1 Data Pipeline. A New API version 2 is in development.
+   | Try it out before release: :doc:`v2 Data Pipeline <data_v2>` | :doc:`v2 API Reference <api_v2>`
+   | **Caution: v2 is WIP and unstable. Not yet production-ready.**
 
 .. currentmodule:: pytorch_forecasting.data
 
@@ -29,9 +36,14 @@ See the API documentation for further details on available data encoders and the
 
 .. currentmodule:: pytorch_forecasting
 
-.. moduleautosummary::
-   :toctree: api/
-   :template: custom-module-template.rst
-   :recursive:
+.. autosummary::
+   :toctree: api
 
-   pytorch_forecasting.data
+    data.encoders.EncoderNormalizer
+    data.encoders.GroupNormalizer
+    data.encoders.MultiNormalizer
+    data.encoders.NaNLabelEncoder
+    data.encoders.TorchNormalizer
+    data.samplers.TimeSynchronizedBatchSampler
+    data.samplers.GroupedSampler
+    data.timeseries.TimeSeriesDataSet

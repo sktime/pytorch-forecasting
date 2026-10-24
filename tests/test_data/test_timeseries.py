@@ -649,7 +649,7 @@ def test_graph_sampler(test_dataset):
                 # calculate distances for corresponding groups
                 group_distances = torch.cdist(
                     data_groups[[selected_pos]],
-                    data_groups[indices["index_start"].to_numpy()],
+                    data_groups[indices["index_start"].tolist()],
                     p=0,
                 )[0].numpy()
                 # filter out all samples without group-link but not itself
