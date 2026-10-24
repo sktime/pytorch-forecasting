@@ -525,8 +525,20 @@ def test_multivariate_target():
 
     dm.setup(stage="fit")
 
+    # with more than one target, y is a list with one (prediction_length,)
+    # tensor per target, as documented in _TslibDataset.__getitem__
     x, y = dm.train_dataset[0]
 
-    assert (
-        y.shape[-1] == 2
-    ), "Target should have two dimensions for n_features for multivariate target."
+    assert isinstance(y, list)
+    assert len(y) == 2
+    for i, target in enumerate(y):
+        assert target.shape == (4,)
+        assert torch.equal(target, x["future_target"][:, i])
+
+    # collate_fn stacks each target across the batch
+    _, y_batch = next(iter(dm.train_dataloader()))
+
+    assert isinstance(y_batch, list)
+    assert len(y_batch) == 2
+    for target in y_batch:
+        assert target.shape == (2, 4)
