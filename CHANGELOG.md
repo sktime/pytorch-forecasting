@@ -1,5 +1,11 @@
 # Release Notes
 
+## Unreleased
+
+### Fixes
+
+* [BUG] Normalize decoder target when `EncoderNormalizer` is used in `EncoderDecoderTimeSeriesDataModule` (#2360)
+
 ## v1.8.0 and v2.0-beta-2
 release focusing on:
 - A new shared documentation for v1 and v2.0-beta

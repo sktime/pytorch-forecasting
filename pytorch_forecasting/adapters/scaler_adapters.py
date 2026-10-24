@@ -199,3 +199,38 @@ class ScalerAdapter:
             col = sub.fit_transform(col, X) if sub.fit_per_sequence else col
             columns.append(col.unsqueeze(-1))
         return torch.cat(columns, dim=-1)
+
+    def transform_sequence(
+        self, data: ArrayLike, X: pd.DataFrame = None
+    ) -> torch.Tensor:
+        """Transform with parameters already fitted on the encoder window.
+
+        Companion to ``fit_transform_sequence``. Per-sequence normalizers
+        (``EncoderNormalizer``) are not refit; other columns are left unchanged
+        because global normalizers were already applied during preprocessing.
+
+        Parameters
+        ----------
+        data : tensor, ndarray, or Series
+            Shape ``(length,)`` or ``(length, n_targets)``.
+
+        Returns
+        -------
+        torch.Tensor
+            Same shape as input.
+        """
+        if not self.fit_per_sequence:
+            return _to_tensor(data)
+        if not self.is_multi:
+            return self.transform(data, X)
+
+        t = _to_tensor(data)
+        if t.ndim == 1:
+            t = t.unsqueeze(-1)
+
+        columns = []
+        for idx, sub in enumerate(self._sub_adapters):
+            col = t[:, idx]
+            col = sub.transform(col, X) if sub.fit_per_sequence else col
+            columns.append(col.unsqueeze(-1))
+        return torch.cat(columns, dim=-1)
