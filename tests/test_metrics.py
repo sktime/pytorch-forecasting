@@ -19,6 +19,7 @@ from pytorch_forecasting.metrics import (
     MultivariateNormalDistributionLoss,
     NegativeBinomialDistributionLoss,
     NormalDistributionLoss,
+    QuantileLoss,
 )
 from pytorch_forecasting.metrics.base_metrics import (
     AggregationMetric,
@@ -570,3 +571,47 @@ def test_MASE():
 
     assert scaling.shape == (batch_size,)
     assert (scaling > 0).all(), "Scaling should be positive"
+
+
+def test_QuantileLoss_to_prediction_fallback():
+    """Test to_prediction selects median when present, nearest quantile otherwise."""
+
+    loss_with_median = QuantileLoss(quantiles=[0.1, 0.5, 0.9])
+    y_pred_3d = torch.tensor([[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]])
+    result = loss_with_median.to_prediction(y_pred_3d)
+    expected = torch.tensor([[2.0, 5.0]])
+    assert torch.equal(result, expected)
+
+    loss_no_median = QuantileLoss(quantiles=[0.1, 0.4, 0.9])
+    result_fallback = loss_no_median.to_prediction(y_pred_3d)
+    expected_fallback = torch.tensor([[2.0, 5.0]])
+    assert torch.equal(result_fallback, expected_fallback)
+
+    y_pred_2d = torch.tensor([[10.0, 20.0]])
+    result_2d = loss_no_median.to_prediction(y_pred_2d)
+    assert torch.equal(result_2d, y_pred_2d)
+
+
+def test_composite_metric_immutability():
+    metric1 = SMAPE()
+    metric2 = MAE()
+
+    base = metric1 + metric2
+    original_len = len(base._metrics)
+    variant = base + SMAPE()
+
+    assert base is not variant
+    assert len(base._metrics) == original_len
+    assert len(variant._metrics) == original_len + 1
+
+    original_weights = list(base._weights)
+    scaled = base * 2.0
+
+    assert base is not scaled
+    assert base._weights == original_weights
+    assert scaled._weights == [w * 2.0 for w in original_weights]
+
+    rscaled = 3.0 * base
+    assert base is not rscaled
+    assert base._weights == original_weights
+    assert rscaled._weights == [w * 3.0 for w in original_weights]

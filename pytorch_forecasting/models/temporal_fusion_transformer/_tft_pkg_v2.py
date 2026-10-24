@@ -9,10 +9,13 @@ class TFT_pkg_v2(Base_pkg):
     _tags = {
         "info:name": "TFT",
         "authors": ["phoeenniixx"],
+        "info:compute": 3,
+        "info:y_type": ["numeric"],
         "capability:exogenous": True,
         "capability:multivariate": True,
         "capability:pred_int": True,
         "capability:flexible_history_length": False,
+        "capability:cold_start": False,
     }
 
     @classmethod
@@ -43,11 +46,24 @@ class TFT_pkg_v2(Base_pkg):
             `MyClass(**params)` or `MyClass(**params[i])` creates a valid test instance.
             `create_test_instance` uses the first (or only) dictionary in `params`
         """
+        import torch.nn as nn
+
         params = [
             {},
             dict(
                 hidden_size=25,
                 attention_head_size=5,
+            ),
+            dict(
+                loss=nn.MSELoss(),
+                hidden_size=16,
+                attention_head_size=4,
+            ),
+            dict(
+                loss=nn.GaussianNLLLoss(),
+                output_size=2,
+                hidden_size=16,
+                attention_head_size=2,
             ),
             dict(datamodule_cfg=dict(max_encoder_length=5, max_prediction_length=3)),
             dict(
