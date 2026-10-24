@@ -7,6 +7,7 @@ import pytest
 from sklearn.utils.validation import NotFittedError, check_is_fitted
 import torch
 
+from pytorch_forecasting.adapters.scaler_adapters import ScalerAdapter
 from pytorch_forecasting.data import (
     EncoderNormalizer,
     GroupNormalizer,
@@ -203,3 +204,50 @@ def test_TorchNormalizer_dtype_consistency():
         TorchNormalizer(method="identity").fit(y).get_parameters().dtype
         == torch.float32
     )
+
+
+def test_sequence_methods_leave_non_sequence_normalizer_unchanged():
+    data = torch.tensor([1.0, 2.0, 3.0])
+
+    adapter = ScalerAdapter(TorchNormalizer())
+
+    result = adapter.fit_transform_sequence(data)
+    torch.testing.assert_close(result, data)
+
+    adapter.fit(data)
+    result = adapter.transform_sequence(data)
+    torch.testing.assert_close(result, data)
+
+
+def test_sequence_methods_handle_multi_normalizer():
+    adapter = ScalerAdapter(
+        MultiNormalizer(
+            [
+                EncoderNormalizer(),
+                TorchNormalizer(),
+            ]
+        )
+    )
+
+    encoder = torch.tensor(
+        [
+            [1.0, 10.0],
+            [2.0, 20.0],
+            [3.0, 30.0],
+        ]
+    )
+
+    decoder = torch.tensor(
+        [
+            [4.0, 40.0],
+            [5.0, 50.0],
+        ]
+    )
+
+    encoded = adapter.fit_transform_sequence(encoder)
+
+    assert encoded.shape == encoder.shape
+
+    transformed = adapter.transform_sequence(decoder)
+
+    assert transformed.shape == decoder.shape

@@ -797,6 +797,9 @@ class EncoderDecoderTimeSeriesDataModule(LightningDataModule):
 
             y = data["target"][decoder_indices]
 
+            if normalizer is not None and normalizer.fit_per_sequence:
+                y = normalizer.transform_sequence(y)
+
             if y.shape[-1] > 1:
                 y = [y[:, i] for i in range(y.shape[-1])]
             else:
