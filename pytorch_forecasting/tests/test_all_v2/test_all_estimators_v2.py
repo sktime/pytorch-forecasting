@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shutil
 
+from lightning import Trainer
 import torch
 
 from pytorch_forecasting.data import TimeSeries
@@ -154,7 +155,7 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
             "default_root_dir": str(tmp_path),
         }
 
-        forecaster = object_pkg(trainer_kwargs=fast_trainer_kwargs)
+        forecaster = object_pkg(trainer=Trainer(**fast_trainer_kwargs))
         forecaster.fit(data, save_ckpt=False)
         predictions = forecaster.predict(data)
 

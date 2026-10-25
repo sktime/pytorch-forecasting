@@ -1,5 +1,6 @@
 import shutil
 
+from lightning import Trainer
 import numpy as np
 import pandas as pd
 import pytest
@@ -58,7 +59,7 @@ def test_minimal_vignette_all_models_defaults(
     }
 
     # Initialize model with all defaults
-    forecaster = forecaster_cls(trainer_kwargs=fast_trainer_kwargs)
+    forecaster = forecaster_cls(trainer=Trainer(**fast_trainer_kwargs))
 
     # Fit on data with default datamodule
     forecaster.fit(minimal_time_series, save_ckpt=False)
@@ -108,7 +109,7 @@ def test_scinet_default_compatibility_regression(tmp_path):
         "default_root_dir": str(tmp_path),
     }
 
-    forecaster = SCINetForecaster(trainer_kwargs=fast_trainer_kwargs)
+    forecaster = SCINetForecaster(trainer=Trainer(**fast_trainer_kwargs))
     forecaster.fit(data, save_ckpt=False)
     predictions = forecaster.predict(data)
 
