@@ -15,7 +15,7 @@ In v1, ``TimeSeriesDataSet`` held the data, encoded and scaled it, cut the
 windows and built the dataloaders. In v2 that work is split.
 :py:class:`~data.timeseries._timeseries_v2.TimeSeries` holds the data, a
 datamodule does the preprocessing and windowing, and a forecaster builds the model
-and trains it. See :doc:`api_v2` for how the layers fit together.
+and trains it. See :doc:`api_v2` for how the pieces fit together.
 
 
 The same task in both APIs

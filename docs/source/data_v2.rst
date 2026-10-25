@@ -7,22 +7,23 @@ Data
 
 .. currentmodule:: pytorch_forecasting
 
-Data reaches a model through two layers. The D1 layer is
-:py:class:`~data.timeseries._timeseries_v2.TimeSeries`. It wraps a pandas
-DataFrame, records the role of each column and returns each series as tensors.
-The D2 layer is a datamodule. It scales the data, cuts each series into windows,
-splits the series into train, validation and test sets and builds the dataloaders.
+:py:class:`~data.timeseries._timeseries_v2.TimeSeries` is the data type of
+``pytorch-forecasting``. It holds a pandas DataFrame together with the role of
+each column. You pass a ``TimeSeries`` to ``fit`` and ``predict``, and ``predict``
+returns one. A datamodule turns a ``TimeSeries`` into model input. It scales the
+data, cuts each series into windows, splits the series into train, validation and
+test sets and builds the dataloaders.
 
 If you train through a forecaster, you build the ``TimeSeries`` and configure the
 datamodule. The forecaster attaches the data and runs the datamodule for you.
 See :doc:`forecaster`.
 
 
-D1 layer
---------
+TimeSeries
+----------
 
-``TimeSeries`` does no scaling, windowing or batching. Each item it returns is one
-complete series.
+``TimeSeries`` does no scaling, windowing or batching. It is also a PyTorch
+``Dataset``, and each item is one complete series as tensors.
 
 .. code-block:: python
 
@@ -62,10 +63,12 @@ treated as unknown.
 ``dataset.get_metadata()`` returns a
 :py:class:`~data._metadata.TimeSeriesMetadata` with the column names, types and
 known status. The datamodules read it to work out the input shapes.
+``dataset.to_pandas()`` returns the data as one DataFrame, with ``data_future``
+appended if it was given.
 
 
-D2 layer
---------
+Datamodules
+-----------
 
 There are two datamodules. Each model works with one of them, and the
 :doc:`model overview <model_list>` shows which.

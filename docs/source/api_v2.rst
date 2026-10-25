@@ -13,17 +13,18 @@ can be trained by a forecaster, by your own Lightning code, or on data from your
 own pipeline. Forecasters give every model the same ``fit`` and ``predict``
 methods, so switching models means changing one class name and its arguments.
 
-Training and prediction pass through four layers.
+Training and prediction involve four pieces.
 
-* D1 layer: :py:class:`~data.timeseries._timeseries_v2.TimeSeries` wraps a
-  DataFrame and returns each series as tensors. See :doc:`data_v2`.
-* D2 layer: a datamodule scales the data, cuts windows, splits the series and
-  builds the dataloaders. It also computes the ``metadata`` the model is built
-  from. See :doc:`data_v2`.
-* Model layer: the network, as a Lightning ``LightningModule``. See
+* TimeSeries: :py:class:`~data.timeseries._timeseries_v2.TimeSeries` holds a
+  DataFrame and the role of each column. It is the input to ``fit`` and
+  ``predict`` and the output of ``predict``. See :doc:`data_v2`.
+* Datamodule: scales the data, cuts windows, splits the series and builds the
+  dataloaders. It also computes the ``metadata`` the model is built from. See
+  :doc:`data_v2`.
+* Model: the network, as a Lightning ``LightningModule``. See
   :doc:`m_layer_v2`.
-* Forecaster layer: builds the other three and exposes ``fit``, ``predict`` and
-  checkpoint loading. See :doc:`forecaster`.
+* Forecaster: attaches the data to the datamodule, builds the model, trains it
+  and returns predictions. It also loads checkpoints. See :doc:`forecaster`.
 
 All models use the losses and metrics in :doc:`metrics`.
 
