@@ -1,29 +1,29 @@
-M Layer v2
+Model layer
 ===========
 
 .. warning::
-    Please note that the v2 modules are currently in active-development and is in beta right now, so please use this API with caution.
-    See complete documentation for v2 API :doc:`here <api_v2>` and stable v1 documentation :doc:`here <api>`.
-
-.. _models:
+    The v2 API is in beta and unstable. It may change without warning and is not
+    ready for production use.
 
 .. currentmodule:: pytorch_forecasting
 
-The forecasting models in the V2 ecosystem are designed with a strict emphasis on modularity and separation of concerns. The architecture decouples algorithmic logic from data processing, ensuring that models act as pure, data-agnostic PyTorch Lightning instances.
+The model layer holds the networks. Each model is a Lightning ``LightningModule``
+with ``forward(x: dict) -> dict``. It is built from the ``metadata`` of its
+datamodule and never reads raw data itself. The :doc:`model overview <model_list>`
+lists the available models.
 
-Available Models
-----------------
+Most users train through a :doc:`forecaster <forecaster>`. Use the model classes
+directly when you need your own training loop, as shown in :doc:`models_v2`.
 
-Below is a summary of the forecasting models currently implemented and supported in the new API.
-
-.. model-overview-v2::
 
 Implementing new architectures
--------------------------------
+------------------------------
 
-Please see the `Extension Templates <https://github.com/sktime/pytorch-forecasting/tree/main/extension_templates/v2>`_ to understand the process and design of the implementations.
-
-Every model should inherit from a base model in :py:mod:`~pytorch_forecasting.models.base._base_model_v2`.
+Every model inherits from a base model in
+:py:mod:`~pytorch_forecasting.models.base._base_model_v2`. Models built for
+:py:class:`~data.data_module._tslib_data_module.TslibDataModule` inherit from
+:py:class:`~models.base._tslib_base_model_v2.TslibBaseModel` instead. Each model
+also needs a forecaster class, see :doc:`forecaster`.
 
 .. autoclass:: pytorch_forecasting.models.base._base_model_v2.BaseModel
    :noindex:
@@ -32,8 +32,6 @@ Every model should inherit from a base model in :py:mod:`~pytorch_forecasting.mo
 
 API Reference
 -------------
-
-See the detailed API documentation for the V2 base classes and specific model implementations below:
 
 .. currentmodule:: pytorch_forecasting
 

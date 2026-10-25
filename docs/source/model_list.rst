@@ -1,17 +1,25 @@
-Model Overview
-===============
+Model overview
+==============
 
-List of Models supported in ``pytorch-forecasting``.
-See below the supported models separated by the version they are present in
+.. warning::
+    The v2 API is in beta and unstable. It may change without warning and is not
+    ready for production use.
 
-v1 Models
-----------
-This is the list of models that are present in the stable version of the ``pytorch-forecasting`` :doc:`v1 <api>` and can be used in production
-
-.. model-overview-v1::
-
-v2 Models
-----------
-The models that are present in the experimental, unstable ``pytorch-forecasting`` :doc:`v2 <api_v2>`. These models should be used with CAUTION!
+The table lists every model in ``pytorch-forecasting``. Each name links to the
+forecaster class you train with. "Compatible Data Modules" is the datamodule the
+forecaster builds when you do not pass one. To use another configuration of it,
+pass your own instance as ``datamodule``, see :doc:`data_v2`.
 
 .. model-overview-v2::
+
+The columns come from the tags each forecaster declares.
+
+* Covariates: the model uses features besides the target.
+* Multiple targets: the model can forecast several targets at once.
+* Regression: the model supports numerical targets.
+* Classification: the model supports categorical targets.
+* Probabilistic: the model predicts a distribution.
+* Prediction intervals: the model can produce prediction intervals.
+* Flexible History Length: the model works with a history of varying length.
+* Cold Start: the model can predict series with little or no history.
+* Compute (1-5): rough compute cost, where 5 is the most expensive.

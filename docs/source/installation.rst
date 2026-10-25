@@ -1,6 +1,10 @@
 Installation
 ============
 
+.. warning::
+    The v2 API is in beta and unstable. It may change without warning and is not
+    ready for production use.
+
 ``pytorch-forecasting`` currently supports:
 
 * Python versions 3.10, 3.11, 3.12, 3.13 and 3.14.
