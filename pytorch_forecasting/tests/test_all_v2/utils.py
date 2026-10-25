@@ -1,5 +1,6 @@
 from typing import Any
 
+from lightning import Trainer
 from lightning.pytorch.loggers import TensorBoardLogger
 
 from pytorch_forecasting.data import TimeSeries
@@ -54,7 +55,7 @@ def _setup_pkg_and_data(
 
     pkg = estimator_cls(
         **model_cfg,
-        trainer_kwargs=trainer_cfg,
+        trainer=Trainer(**trainer_cfg),
         datamodule=estimator_cls.get_datamodule_cls()(**default_datamodule_cfg),
     )
 
