@@ -31,7 +31,8 @@ Optional Methods to implement:
         Often implemented for DistributionLoss metrics
     to_prediction - Convert network prediction into prediction as per the loss.
         Implemented if you need some special preprocessing to return the prediction
-        Eg, for point prediction, we take argmax - y_pred.argmax(dim=-1)
+        Choose the conversion for the implemented loss; classification scores
+        and numeric forecasts need different conversions.
     to_quantiles - Convert network prediction into quantile predictions.
         Implemented if you need some special preprocessing to return the quantile pred.
 """
@@ -42,7 +43,11 @@ import torch
 
 from pytorch_forecasting.metrics import MultiHorizonMetric
 
+# TODO: Add imports needed by the implemented metric.
+# Import optional dependencies inside methods rather than at module level.
 
+
+# TODO: Rename the class and replace the placeholder documentation below.
 class MyMetric(MultiHorizonMetric):
     """Custom Metric.
     todo: write docstring.
@@ -51,16 +56,18 @@ class MyMetric(MultiHorizonMetric):
 
     Parameters
     ----------
-    parama : anytype
-        descriptive explanation of parama
-    paramb : string, optional (default='default')
-        descriptive explanation of paramb
-    paramc : boolean, optional (default=MyOtherEstimator(foo=42))
-        descriptive explanation of paramc
-    and so on
+    parama : Any, optional
+        TODO: Describe the metric-specific option and its default.
+    paramb : str, default="default"
+        TODO: Describe this option and its valid values.
+    paramc : Any, optional
+        TODO: Describe any additional component or configuration.
+    **kwargs : Any
+        Supported base metric options, such as reduction.
     """
 
     # Optional: add parameters specific to this metric.
+    # TODO: Replace the example parameters and update their descriptions above.
     def __init__(
         self,
         parama: Any = None,
@@ -69,10 +76,13 @@ class MyMetric(MultiHorizonMetric):
         **kwargs: Any,
     ):
         super().__init__(**kwargs)
+        # Collect constructor parameters as attributes. Do not overwrite or
+        # mutate them to resolve defaults; use separate private attributes instead.
         self.parama = parama
         self.paramb = paramb
         self.paramc = paramc
 
+    # Mandatory: compute per-sample, per-horizon losses before base reduction.
     def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         """Compute unreduced loss values for a batch.
 
@@ -87,19 +97,28 @@ class MyMetric(MultiHorizonMetric):
         -------
         torch.Tensor
             Loss values before the base metric applies masking and reduction.
+
+        TODO: Describe the implemented formula and any prediction/target shape
+        requirements specific to this metric.
         """
         # TODO: implement loss using the existing multi-horizon tensor contract.
         raise NotImplementedError("Implement the metric loss.")
 
+    # TODO: Implement optional methods only when needed; otherwise remove the
+    # corresponding example comments from the adapted metric.
     # Implement these only when the metric needs custom prediction conversion.
     #
     # def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
     #     """Convert network output to a point prediction."""
+    #     # TODO: Apply the conversion required by this metric.
     #
     # def to_quantiles(
     #     self, y_pred: torch.Tensor, quantiles: list[float] | None = None
     # ) -> torch.Tensor:
     #     """Convert network output to quantile predictions."""
+    #     # TODO: Produce the requested quantiles from this metric's predictions.
     #
     # DistributionLoss subclasses can additionally implement
     # map_x_to_distribution and rescale_parameters as required by their base class.
+    # TODO: When adapting a distribution loss, copy the corresponding base-class
+    # signatures and document the distribution and parameter rescaling used.
