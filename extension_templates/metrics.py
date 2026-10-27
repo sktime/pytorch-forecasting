@@ -1,4 +1,5 @@
-"""Extension Template for metrics
+"""Extension template for metrics.
+
 Purpose of this implementation template:
     quick implementation of new estimators following the template
     NOT a concrete class to import! This is NOT a base class or concrete class!
@@ -15,12 +16,9 @@ How to use this implementation template to implement a new metric:
 - change docstrings for functions and the file
 - once complete: use as a local library, or contribute to pytorch-forecasting via PR
 
-Base Classes to choose from:
-Pytorch-forecasting provides different Base classes that can be used based upon what
-kind of metric is being implemented. Some supported Base Classes to choose from:
-- MultiHorizonMetric - If you want to implement point prediction metric or any genric
-    metric
-- DistributionLoss/MultivariateDistributionLoss - For DistributionLoss
+Base classes to choose from:
+- MultiHorizonMetric for point-prediction or other multi-horizon metrics.
+- DistributionLoss or MultivariateDistributionLoss for distribution losses.
 
 Mandatory methods to implement:
     loss - to calculate loss
@@ -34,18 +32,15 @@ Optional Methods to implement:
     to_prediction - Convert network prediction into prediction as per the loss.
         Implemented if you need some special preprocessing to return the prediction
         Eg, for point prediction, we take argmax - y_pred.argmax(dim=-1)
-    to_quantile - Convert network prediction into a quantile prediction.
+    to_quantiles - Convert network prediction into quantile predictions.
         Implemented if you need some special preprocessing to return the quantile pred.
 """
 
-# todo: write an informative docstring for the file or module, remove the above
+from typing import Any
+
 import torch
-from torch import distributions
 
 from pytorch_forecasting.metrics import MultiHorizonMetric
-
-# todo: add any necessary imports here
-# import soft dependencies only inside methods of the class, not at the top of the file
 
 
 class MyMetric(MultiHorizonMetric):
@@ -65,57 +60,46 @@ class MyMetric(MultiHorizonMetric):
     and so on
     """
 
-    # OPTIONAL method
-    # create __init__() if you need specific args to be passed to initilialize the class
-    def __init__(self, parama, paramb, paramc):
-        # collect all the params passed to __init__() below
-        # todo: write any hyper-parameters and components to self
+    # Optional: add parameters specific to this metric.
+    def __init__(
+        self,
+        parama: Any = None,
+        paramb: str = "default",
+        paramc: Any = None,
+        **kwargs: Any,
+    ):
+        super().__init__(**kwargs)
         self.parama = parama
         self.paramb = paramb
-        # IMPORTANT: the self.params should never be overwritten or mutated from now on
-        # for handling defaults etc, write to other attributes, e.g., self._paramc
         self.paramc = paramc
-        # leave this as is
-        super().__init__()
-        # create anyother required params after this
 
-    # implement this is mandatory
-    def loss(self, paramx):
-        """loss computation.
-
-        todo: write a descriptive docstring
+    def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        """Compute unreduced loss values for a batch.
 
         Parameters
         ----------
-        paramx : anytype
-          descriptive explanation of paramx
-        and so on
-        """
-        # implement the loss function
+        y_pred : torch.Tensor
+            Prediction tensor supplied by ``BaseModel``.
+        target : torch.Tensor
+            Target values corresponding to the model output.
 
-    # todo implement the other optional methods if needed otherwise delete the following
-    # lines
-    # Other optional methods
-    # def rescale_parameters(self, param):
-    #     """rescale the parameter values so that the loss can be computed.
-    #     todo write docstring
-    #     """
-    #     # implement the method
+        Returns
+        -------
+        torch.Tensor
+            Loss values before the base metric applies masking and reduction.
+        """
+        # TODO: implement loss using the existing multi-horizon tensor contract.
+        raise NotImplementedError("Implement the metric loss.")
+
+    # Implement these only when the metric needs custom prediction conversion.
     #
-    # def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Distribution:
-    #     """map x to distribution
-    #     todo write docstring
-    #     """
-    #     # implement the method
+    # def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
+    #     """Convert network output to a point prediction."""
     #
-    # def to_prediction(self, x: torch.Tensor) -> torch.Tensor:
-    #     """convert x to prediction
-    #     todo write docstring
-    #     """
-    #     # implement the method
+    # def to_quantiles(
+    #     self, y_pred: torch.Tensor, quantiles: list[float] | None = None
+    # ) -> torch.Tensor:
+    #     """Convert network output to quantile predictions."""
     #
-    # def to_quantile(self, x: torch.Tensor) -> torch.Tensor:
-    #     """convert x to quantile
-    #     todo write docstring
-    #     """
-    #     #implement the method
+    # DistributionLoss subclasses can additionally implement
+    # map_x_to_distribution and rescale_parameters as required by their base class.
