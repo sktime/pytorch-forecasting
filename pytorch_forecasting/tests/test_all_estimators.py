@@ -139,7 +139,7 @@ class EstimatorFixtureGenerator(BaseFixtureGenerator):
     @staticmethod
     def is_excluded(test_name, est, param_name=None):
         """Shorthand to check whether test test_name is excluded for estimator est."""
-        if est.__name__.endswith("_pkg") or est.__name__.endswith("_pkg_v2"):
+        if est.__name__.endswith(("_pkg", "_pkg_v2", "Forecaster")):
             excl_tag = est.get_class_tag("tests:skip_by_name", [])
         else:
             excl_tag = est.pkg.get_class_tag("tests:skip_by_name", [])
