@@ -429,13 +429,11 @@ class TslibDataModule(LightningDataModule):
         if hasattr(self.time_series_dataset, "get_metadata"):
             ds_metadata = self.time_series_dataset.get_metadata()
         else:
-            # If it's a standard PyTorch dataset, providing a default fallback
             ds_metadata = {
                 "categorical": [],
                 "continuous": [],
                 "static": [],
                 "known": [],
-                # ... add any other default keys the module expects
             }
         feature_names = {
             "categorical": [],
