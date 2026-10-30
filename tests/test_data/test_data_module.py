@@ -768,6 +768,94 @@ def test_with_data_does_not_refit_transforms():
     )
 
 
+def _raw_decoder_targets(ts, windows, target_idx=0):
+    """Decoder targets of each window, read from the raw ``TimeSeries``."""
+    return torch.stack(
+        [
+            torch.as_tensor(ts[s]["y"][st + enc : st + enc + pred, target_idx])
+            for s, st, enc, pred in windows
+        ]
+    ).float()
+
+
+@pytest.mark.parametrize(
+    "normalizer",
+    [
+        TorchNormalizer(),
+        TorchNormalizer(transformation="log"),
+        GroupNormalizer(groups=["group"]),
+        StandardScaler(),
+        EncoderNormalizer(),
+    ],
+    ids=["torch", "torch-log", "group", "sklearn", "encoder"],
+)
+def test_inverse_transform_restores_target(normalizer):
+    """Checks if predict-batch targets, inverted per window, equal the raw targets."""
+    ts = make_timeseries(offset=1000.0, seed=0, num_groups=3, seq_length=40)
+    dm = EncoderDecoderTimeSeriesDataModule(
+        time_series=ts,
+        max_encoder_length=10,
+        max_prediction_length=5,
+        batch_size=8,
+        target_normalizer=normalizer,
+    )
+    dm.setup("fit")
+    predict_dm = dm.with_data(ts)
+    predict_dm.setup("predict")
+
+    y = torch.cat([y for _, y in predict_dm.predict_dataloader()])
+    restored = predict_dm.inverse_transform_target(y, predict_dm.predict_windows)
+
+    expected = _raw_decoder_targets(ts, predict_dm.predict_windows)
+    torch.testing.assert_close(restored, expected, rtol=1e-4, atol=1e-2)
+
+
+@pytest.mark.parametrize(
+    "normalizers",
+    [
+        [TorchNormalizer(), GroupNormalizer(groups=["group"])],
+        [EncoderNormalizer(), TorchNormalizer()],
+    ],
+    ids=["per-target", "per-sequence-sub"],
+)
+def test_inverse_transform_restores_multi_target(normalizers):
+    """Chcks if Each target is restored with its own normalizer, or left as it was."""
+    df = pd.DataFrame(
+        {
+            "group": np.repeat([0, 1], 40),
+            "time": np.tile(range(40), 2),
+            "target1": np.random.default_rng(0).normal(1000, 10, 80),
+            "target2": np.random.default_rng(1).normal(-50, 2, 80),
+            "feature1": np.random.default_rng(2).normal(0, 1, 80),
+        }
+    )
+    ts = TimeSeries(
+        data=df,
+        time="time",
+        target=["target1", "target2"],
+        group=["group"],
+        num=["feature1"],
+    )
+    dm = EncoderDecoderTimeSeriesDataModule(
+        time_series=ts,
+        max_encoder_length=10,
+        max_prediction_length=5,
+        batch_size=8,
+        target_normalizer=normalizers,
+    )
+    dm.setup("fit")
+    predict_dm = dm.with_data(ts)
+    predict_dm.setup("predict")
+
+    batches = [y for _, y in predict_dm.predict_dataloader()]
+    y = [torch.cat([b[i] for b in batches]) for i in range(2)]
+    restored = predict_dm.inverse_transform_target(y, predict_dm.predict_windows)
+
+    for i in range(2):
+        expected = _raw_decoder_targets(ts, predict_dm.predict_windows, i)
+        torch.testing.assert_close(restored[i], expected, rtol=1e-4, atol=1e-2)
+
+
 def test_data_less_module_becomes_usable_with_data():
     """A module built without data is a configuration, usable once given data."""
     config = EncoderDecoderTimeSeriesDataModule(

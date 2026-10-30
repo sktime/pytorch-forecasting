@@ -165,6 +165,7 @@ class TimeSeries(Dataset):
             self._group_ids = ["_single_group"]
         # create mapping from group id to index for efficient lookup
         self._group_to_idx = {gid: i for i, gid in enumerate(self._group_ids)}
+        self._time_index = None
 
         self._prepare_metadata()
 
@@ -428,6 +429,71 @@ class TimeSeries(Dataset):
             - is_prediction: whether the data are predictions
         """
         return self.metadata
+
+    def get_time_index(self) -> tuple[list[tuple], np.ndarray, np.ndarray]:
+        """Return the time axis of every series.
+
+        Computed on first call and cached.
+
+        Returns
+        -------
+        keys : list of tuple
+            group values of each series, in series order.
+        times : np.ndarray
+            ``t`` of all series, concatenated in series order.
+        offsets : np.ndarray of shape (n_series + 1,)
+            series ``i`` occupies ``times[offsets[i]:offsets[i + 1]]``.
+        """
+        if self._time_index is not None:
+            return self._time_index
+
+        keys = [k if isinstance(k, tuple) else (k,) for k in self._group_ids]
+        times, offsets = self._times_by_series(self.data, keys)
+
+        if self.data_future is not None:
+            future_times, future_offsets = self._times_by_series(self.data_future, keys)
+            # past and future merge into one sorted axis per series
+            past = np.split(times, offsets[1:-1])
+            future = np.split(future_times, future_offsets[1:-1])
+            per_series = [np.unique(np.concatenate(pair)) for pair in zip(past, future)]
+            times = np.concatenate(per_series)
+            offsets = np.concatenate([[0], np.cumsum([len(t) for t in per_series])])
+
+        self._time_index = (keys, times, offsets)
+        return self._time_index
+
+    def _times_by_series(
+        self, df: pd.DataFrame, keys: list[tuple]
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Times of ``df`` grouped by series, in row order within a series.
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            ``data`` or ``data_future``.
+        keys : list of tuple
+            group values of each series, in series order.
+
+        Returns
+        -------
+        times : np.ndarray
+            times of the rows of ``df``, concatenated in series order. Rows of
+            groups not in ``keys`` are dropped.
+        offsets : np.ndarray of shape (n_series + 1,)
+            series ``i`` occupies ``times[offsets[i]:offsets[i + 1]]``.
+        """
+        if self._group:
+            codes = pd.MultiIndex.from_tuples(keys).get_indexer(
+                pd.MultiIndex.from_frame(df[self._group])
+            )
+        else:
+            codes = np.zeros(len(df), dtype=np.intp)
+        keep = codes >= 0
+        codes = codes[keep]
+        order = np.argsort(codes, kind="stable")
+        times = df[self._time].to_numpy()[keep][order]
+        counts = np.bincount(codes, minlength=len(self))
+        return times, np.concatenate([[0], np.cumsum(counts)])
 
     def to_pandas(self) -> pd.DataFrame:
         """Return the data as a single data frame.
