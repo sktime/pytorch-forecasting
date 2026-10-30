@@ -726,3 +726,106 @@ def test_group_normalizer_uses_groups():
         mean1 = target1["target"].mean().abs()
         assert mean0 < 1.0, "Group 0 target should be normalized near 0"
         assert mean1 < 1.0, "Group 1 target should be normalized near 0"
+
+
+def _module(dataset, normalizer):
+    """Build a module over `dataset`; the shared `data_module` fixture pins no
+    target_normalizer, and these tests need to vary it."""
+    dm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=dataset,
+        max_encoder_length=20,
+        max_prediction_length=5,
+        batch_size=2,
+        target_normalizer=normalizer,
+    )
+    dm.setup(stage="fit")
+    return dm
+
+
+def _window_targets(dm):
+    """Raw encoder and decoder targets for the module's first window."""
+    series_idx, start, enc_length, pred_length = dm.train_dataset.windows[0]
+    raw = dm.train_dataset.preprocessed_data[series_idx]["target"].float()
+    return (
+        raw[start : start + enc_length],
+        raw[start + enc_length : start + enc_length + pred_length],
+    )
+
+
+def test_encoder_normalizer_normalizes_y(sample_timeseries_data):
+    """`y` must be the decoder window put through the encoder's scaler.
+
+    Regression test for #2360: `EncoderNormalizer` is fitted per sequence at
+    `__getitem__` time and only `target_past` was transformed, so the loss
+    compared normalized predictions against raw targets.
+    """
+    dm = _module(sample_timeseries_data, EncoderNormalizer())
+    x, y = dm.train_dataset[0]
+    encoder_raw, decoder_raw = _window_targets(dm)
+
+    expected = (
+        (decoder_raw - encoder_raw.mean()) / encoder_raw.std(unbiased=True)
+    ).squeeze(-1)
+
+    assert abs(float(x["target_past"].mean())) < 1e-4
+    assert torch.allclose(
+        y.float(), expected, atol=1e-3
+    ), f"expected {expected.tolist()}, got {y.tolist()}"
+    assert not torch.allclose(
+        y.float(), decoder_raw.squeeze(-1), atol=1e-3
+    ), "y is still raw"
+
+
+def test_encoder_normalizer_is_not_refitted_on_the_decoder_window(
+    sample_timeseries_data,
+):
+    """Refitting would scale the target by the values being predicted -- the
+    leak `EncoderNormalizer` exists to avoid. It is detectable: a refit forces
+    `y` to mean 0 and std 1."""
+    dm = _module(sample_timeseries_data, EncoderNormalizer())
+    _, y = dm.train_dataset[0]
+
+    assert (
+        abs(float(y.mean())) > 0.1
+    ), "y has mean 0, so the normalizer was refitted on the decoder window"
+
+
+@pytest.mark.parametrize("normalizer", [None, TorchNormalizer(), GroupNormalizer()])
+def test_non_per_sequence_normalizers_are_unchanged(normalizer, sample_timeseries_data):
+    """These normalize during preprocessing, so transforming `y` again would
+    scale it twice; the new code must stay behind the `fit_per_sequence` check."""
+    dm = _module(sample_timeseries_data, normalizer)
+    _, y = dm.train_dataset[0]
+    _, decoder_raw = _window_targets(dm)
+
+    assert torch.allclose(y.float(), decoder_raw.squeeze(-1), atol=1e-6)
+
+
+def test_multivariate_target_normalizes_only_the_per_sequence_column():
+    """With a mixed list, only the EncoderNormalizer column is transformed."""
+    np.random.seed(0)
+    df = pd.DataFrame(
+        {
+            "group": np.repeat([0, 1], 60),
+            "time": np.tile(pd.date_range("2020-01-01", periods=60), 2),
+            "target1": np.random.normal(100, 1, 120),
+            "target2": np.random.normal(500, 2, 120),
+            "feature1": np.random.normal(0, 1, 120),
+        }
+    )
+    dataset = TimeSeries(
+        data=df,
+        time="time",
+        target=["target1", "target2"],
+        group=["group"],
+        num=["feature1"],
+    )
+    dm = _module(dataset, [EncoderNormalizer(), TorchNormalizer()])
+    _, y = dm.train_dataset[0]
+
+    assert isinstance(y, list) and len(y) == 2
+    # target1 is per-sequence, so it lands near the encoder's scale rather
+    # than near its raw mean of 100.
+    assert abs(float(y[0].mean())) < 20.0
+    # target2 was normalized during preprocessing and must not be touched again.
+    assert torch.isfinite(y[1]).all()
