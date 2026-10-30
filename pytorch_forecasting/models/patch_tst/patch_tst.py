@@ -23,7 +23,58 @@ from pytorch_forecasting.models.nn.embeddings import MultiEmbedding
 
 
 class PatchTST(BaseModelWithCovariates):
-    """PatchTST model for time series forecasting."""
+    """PatchTST model for time series forecasting.
+
+    Examples:
+        >>> import pandas as pd
+        >>> import numpy as np
+        >>> from lightning.pytorch import Trainer
+        >>> from pytorch_forecasting import TimeSeriesDataSet
+        >>> from pytorch_forecasting.models import PatchTST
+        >>>
+        >>> # Generate toy sequential data
+        >>> data = pd.DataFrame(
+        ...     {
+        ...         "time_idx": np.tile(np.arange(40), 2),
+        ...         "target": np.random.randn(80),
+        ...         "group": np.repeat(["A", "B"], 40),
+        ...     }
+        ... )
+        >>>
+        >>> training = TimeSeriesDataSet(
+        ...     data,
+        ...     time_idx="time_idx",
+        ...     target="target",
+        ...     group_ids=["group"],
+        ...     min_encoder_length=10,
+        ...     max_encoder_length=10,
+        ...     min_prediction_length=5,
+        ...     max_prediction_length=5,
+        ...     time_varying_unknown_reals=["target"],
+        ... )
+        >>> dataloader = training.to_dataloader(batch_size=4)
+        >>>
+        >>> model = PatchTST.from_dataset(
+        ...     training,
+        ...     learning_rate=1e-3,
+        ...     patch_len=5,
+        ...     stride=5,
+        ...     d_model=16,
+        ...     n_heads=2,
+        ...     e_layers=1,
+        ...     d_ff=32,
+        ...     dropout=0.1,
+        ... )
+        >>> trainer = Trainer(
+        ...     fast_dev_run=True,
+        ...     accelerator="cpu",
+        ...     enable_model_summary=False,
+        ...     enable_progress_bar=False,
+        ...     logger=False,
+        ... )
+        >>> trainer.fit(model, dataloader)
+        >>> predictions = model.predict(dataloader)
+    """
 
     @classmethod
     def _pkg(cls):
