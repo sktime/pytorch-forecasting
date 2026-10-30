@@ -492,6 +492,52 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
 
         return target, target_original
 
+    def inverse_transform_target(
+        self,
+        y: torch.Tensor | list[torch.Tensor],
+        windows: list[tuple[int, int, int, int]],
+    ) -> torch.Tensor | list[torch.Tensor]:
+        """Undo the target normalization of per-window outputs.
+
+        Parameters
+        ----------
+        y : torch.Tensor or list of torch.Tensor
+            Outputs of shape ``(n_windows, prediction_length, ...)``, one entry
+            per target if there are several targets.
+        windows : list of tuple
+            ``(series_idx, start_idx, enc_length, pred_length)`` of each window,
+            aligned with the first axis of ``y``.
+
+        Returns
+        -------
+        torch.Tensor or list of torch.Tensor
+            ``y`` in the space of the original target, same shape as input.
+        """
+        if self._target_normalizer is None or not self._target_normalizer_fitted:
+            return y
+
+        is_multi = isinstance(y, (list, tuple))
+        targets = list(y) if is_multi else [y]
+        n_windows, pred_len = targets[0].shape[:2]
+
+        frames = [self._get_group_dataframe(w[0], pred_len) for w in windows]
+        X = None if frames[0] is None else pd.concat(frames, ignore_index=True)
+        target_scale = self._target_normalizer.get_parameters(X)
+
+        flat = torch.stack([t.reshape(n_windows * pred_len, -1) for t in targets], -1)
+        if not is_multi:
+            flat = flat.squeeze(-1)
+        out = torch.stack(
+            [
+                self._target_normalizer.inverse_transform(flat[:, k], target_scale)
+                for k in range(flat.shape[1])
+            ],
+            dim=1,
+        )
+        if is_multi:
+            return [out[..., i].reshape(t.shape) for i, t in enumerate(targets)]
+        return out.reshape(targets[0].shape)
+
     def _normalize_features(
         self, continuous: torch.Tensor, series_idx: int
     ) -> torch.Tensor:

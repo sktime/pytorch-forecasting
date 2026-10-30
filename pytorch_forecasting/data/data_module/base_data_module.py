@@ -235,6 +235,29 @@ class BaseTimeSeriesDataModule(LightningDataModule):
         """Prepare metadata for model initialisation."""
 
     @abstractmethod
+    def inverse_transform_target(
+        self,
+        y: torch.Tensor | list[torch.Tensor],
+        windows: list[tuple[int, int, int, int]],
+    ) -> torch.Tensor | list[torch.Tensor]:
+        """Undo the target normalization of per-window outputs.
+
+        Parameters
+        ----------
+        y : torch.Tensor or list of torch.Tensor
+            Outputs of shape ``(n_windows, prediction_length, ...)``, one entry
+            per target if there are several targets.
+        windows : list of tuple
+            ``(series_idx, start_idx, enc_length, pred_length)`` of each window,
+            aligned with the first axis of ``y``.
+
+        Returns
+        -------
+        torch.Tensor or list of torch.Tensor
+            ``y`` in the space of the original target, same shape as input.
+        """
+
+    @abstractmethod
     def _preprocess_data(self, series_idx) -> dict[str, Any]:
         """Preprocess one series into a cache dict.
 

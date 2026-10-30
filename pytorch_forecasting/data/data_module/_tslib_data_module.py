@@ -652,6 +652,33 @@ class TslibDataModule(BaseTimeSeriesDataModule):
 
         return windows
 
+    def inverse_transform_target(
+        self,
+        y: torch.Tensor | list[torch.Tensor],
+        windows: list[tuple[int, int, int, int]],
+    ) -> torch.Tensor | list[torch.Tensor]:
+        """Undo the target normalization of per-window outputs.
+
+        The target is not normalized by this module, so ``y`` is returned
+        unchanged.
+
+        Parameters
+        ----------
+        y : torch.Tensor or list of torch.Tensor
+            Outputs of shape ``(n_windows, prediction_length, ...)``, one entry
+            per target if there are several targets.
+        windows : list of tuple
+            ``(series_idx, start_idx, context_length, prediction_length)`` of
+            each window, aligned with the first axis of ``y``.
+
+        Returns
+        -------
+        torch.Tensor or list of torch.Tensor
+            ``y``, unchanged.
+        """
+        # TODO: add transformation and inverse transforms in tslib dm as well!
+        return y
+
     def _build_dataset(self, indices: torch.Tensor) -> Dataset:
         return _TslibDataset(
             dataset=self.time_series,
