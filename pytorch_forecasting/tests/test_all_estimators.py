@@ -9,12 +9,9 @@ from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
 from skbase.utils.dependencies import _check_soft_dependencies
 
+from pytorch_forecasting._registry import all_objects
 from pytorch_forecasting.tests._base._fixture_generator import BaseFixtureGenerator
 from pytorch_forecasting.tests._config import EXCLUDE_ESTIMATORS, EXCLUDED_TESTS
-from pytorch_forecasting.tests._loss_mapping import (
-    LOSS_SPECIFIC_PARAMS,
-    get_compatible_losses,
-)
 
 # whether to test only estimators from modules that are changed w.r.t. main
 # default is False, can be set to True by pytest --only_changed_modules True flag
@@ -153,8 +150,8 @@ class EstimatorFixtureGenerator(BaseFixtureGenerator):
                 return True
         return cond
 
-    def _get_compatible_losses_for_model(self, obj_meta):
-        """Get compatible losses for a model using semantic tags.
+    def _get_compatible_loss_pkgs_for_model(self, obj_meta):
+        """Get compatible loss packages for a model.
 
         Parameters
         ----------
@@ -163,21 +160,36 @@ class EstimatorFixtureGenerator(BaseFixtureGenerator):
 
         Returns
         -------
-        list
-            List of compatible loss instances
+        list of metric packages
+            List of compatible loss packages
         """
-        pred_types = obj_meta.get_class_tag("info:pred_type", [])
-        y_types = obj_meta.get_class_tag("info:y_type", [])
+        compatible_metric_types = obj_meta._get_compatible_loss_types()
+        if not compatible_metric_types:
+            return []
 
-        return get_compatible_losses(pred_types, y_types)
+        metric_pkgs = all_objects(
+            object_types="metric",
+            filter_tags={"metric_type": compatible_metric_types},
+            return_names=False,
+        )
+        compatible_loss_pkgs = []
+        for metric_pkg in metric_pkgs:
+            # TODO: still need some debugging to add the MQF2DistributionLoss
+            if metric_pkg.get_cls().__name__ == "MQF2DistributionLoss":
+                continue
+            if not self._check_required_dependencies(metric_pkg):
+                continue
+            compatible_loss_pkgs.append(metric_pkg)
 
-    def _generate_final_param_list(self, compatible_losses, base_params_list):
+        return compatible_loss_pkgs
+
+    def _generate_final_param_list(self, compatible_loss_pkgs, base_params_list):
         """Generate final parameter combinations for compatible loss types.
 
         Parameters
         ----------
-        compatible_loss : list of str
-            List of losses that are compatible with the current model.
+        compatible_loss_pkgs : list of metric packages
+            List of metric packages that are compatible with the current model.
         base_params_list : list of dict
             List of base parameter dictionaries to be combined with each loss
             function.
@@ -195,14 +207,10 @@ class EstimatorFixtureGenerator(BaseFixtureGenerator):
         """
         all_train_kwargs = []
         train_kwargs_names = []
-        for loss_item in compatible_losses:
-            if inspect.isclass(loss_item):
-                loss_name = loss_item.__name__
-                loss = loss_item
-            else:
-                loss_name = loss_item.__class__.__name__
-                loss = loss_item
-            loss_params = deepcopy(LOSS_SPECIFIC_PARAMS.get(loss_name, {}))
+        for loss_pkg in compatible_loss_pkgs:
+            loss = loss_pkg.get_cls()()
+            loss_name = loss.__class__.__name__
+            loss_params = deepcopy(loss_pkg.get_default_params())
             loss_params["loss"] = loss
 
             for i, base_params in enumerate(base_params_list):
@@ -224,11 +232,11 @@ class EstimatorFixtureGenerator(BaseFixtureGenerator):
         else:
             return []
 
-        compatible_losses = self._get_compatible_losses_for_model(obj_meta)
-        if compatible_losses:
+        compatible_loss_pkgs = self._get_compatible_loss_pkgs_for_model(obj_meta)
+        if compatible_loss_pkgs:
             base_params_list = obj_meta.get_base_test_params()
             all_train_kwargs, train_kwargs_names = self._generate_final_param_list(
-                compatible_losses, base_params_list
+                compatible_loss_pkgs, base_params_list
             )
 
         else:
@@ -242,15 +250,8 @@ class EstimatorFixtureGenerator(BaseFixtureGenerator):
 
         for kwargs_dict, param_name in zip(all_train_kwargs, train_kwargs_names):
             if not self.is_excluded(test_name, model_cls, param_name):
-                loss = param_name.split("-")[-1]
-                if (
-                    loss == "MQF2DistributionLoss"
-                    and not self._check_required_dependencies(obj_meta)
-                ):
-                    continue
-                else:
-                    filtered_kwargs.append(kwargs_dict)
-                    filtered_names.append(param_name)
+                filtered_kwargs.append(kwargs_dict)
+                filtered_names.append(param_name)
 
         return filtered_kwargs, filtered_names
 
