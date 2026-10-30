@@ -1,125 +1,160 @@
-"""Extension Template for Data Module (D2 Layer)
+"""Extension template for a custom data module (D2 layer).
+
 Purpose of this implementation template:
-    quick implementation of new estimators following the template
+    quick implementation of new data modules following the template
     NOT a concrete class to import! This is NOT a base class or concrete class!
     This is to be used as a "fill-in" coding template.
 
-How to use this implementation template to implement a new estimator:
-- make a copy of the template in a suitable location, give it a descriptive name.
-    - if the name has more than one word (like Encoder-Decoder Data Module), the name of
-    the file should be created by separating these words by a underscore (_).
-    For eg, for Encoder-Decoder Data Module, the name of the file would be
-    _encoder_decoder_data_module.py.
+How to use this implementation template to implement a new data module:
+- make a copy together with _dataset.py and give the module a descriptive name
 - work through all the "todo" comments below
-- fill in code for mandatory methods, and optionally for optional methods
-- change docstrings for functions and the file
+- implement the data-format hooks required by BaseTimeSeriesDataModule
+- update the metadata, batch-format, parameter, and preprocessing descriptions
+- select this class in the corresponding forecaster's get_datamodule_cls method
 - once complete: use as a local library, or contribute to pytorch-forecasting via PR
 
-Mandatory methods to implement:
-    _prepare_metadata - method to create metadata
-    metadata - property to access the metadata
-    _preprocess_data - method to preprocess data
-    setup - method to setup the ML pipeline
+Mandatory hooks to implement:
+    _prepare_metadata - derive the metadata required by the model constructor.
+    _preprocess_data - preprocess one series for dataset consumption.
+    _create_windows - define forecast windows over selected series.
+    _build_dataset - construct the private dataset for those windows.
+    collate_fn - collate dataset samples into an (x, y) batch.
+
+The base owns metadata access, with_data, setup, and dataloader creation. Inherit
+those methods instead of reimplementing their data-attachment and split logic.
 """
 
-# todo: write an informative docstring for the file or module, remove the above
 from typing import Any
 
-from lightning.pytorch import LightningDataModule
 import torch
 
-# todo: add any necessary imports here
-# import soft dependencies only inside methods of the class, not at the top of the file
+from pytorch_forecasting.data.data_module import BaseTimeSeriesDataModule
+
+from ._dataset import _MyDataModuleDataset
 
 
-class MyDataModule(LightningDataModule):
-    """Custom DataModule.
-    todo: write docstring.
+# TODO: Rename the class and describe the implemented data format.
+class MyDataModule(BaseTimeSeriesDataModule):
+    """Custom data module implementing the v2 time-series data-module hooks.
 
-    todo: describe your custom DataModule here
+    The base class owns data attachment, split setup, and dataloader creation.
+    TODO: Describe the supported series, preprocessing, model metadata, and batch
+    keys. Complete every required hook below before using the adapted class.
 
     Parameters
     ----------
-    parama : anytype
-        descriptive explanation of parama
-    paramb : string, optional (default='default')
-        descriptive explanation of paramb
-    paramc : boolean, optional (default=MyOtherEstimator(foo=42))
-        descriptive explanation of paramc
-    and so on
+    time_series : TimeSeries, optional
+        Input data. Leave unset when configuring a forecaster; its fit and
+        predict methods attach data through with_data.
+    target_normalizer : normalizer, str, list, tuple or None, default="auto"
+        Target normalization setting interpreted by the base data module.
+    batch_size : int, default=32
+        Batch size used by the inherited dataloaders.
+    num_workers : int, default=0
+        Number of dataloader workers.
+    train_val_test_split : tuple[float, float, float], default=(0.7, 0.15, 0.15)
+        Fractions used by the base for train, validation, and test splits.
+    add_relative_time_idx : bool, default=False
+        Whether to include the relative-time-index feature.
     """
 
-    # todo: add any hyper-parameters and components to constructor
-    def __init__(self, parama=None, paramb="default", paramc=None):
-        # collect all the params passed to __init__() below
-        # todo: write any hyper-parameters and components to self
-        self.parama = parama
-        self.paramb = paramb
-        # IMPORTANT: the self.params should never be overwritten or mutated from now on
-        # for handling defaults etc, write to other attributes, e.g., self._paramc
-        self.paramc = paramc
-        # leave this as is
-        super().__init__()
-        # create anyother required params after this
-        # must have this arg in self
-        self._metadata = None
+    # The inherited constructor exposes the options above and records them for
+    # with_data. Only add an override if the module needs extra configuration.
+    # TODO: If overriding, expose supported base options explicitly, store new
+    # options as same-named attributes before super(), and forward the base options.
+    # Hiding base options in **kwargs would prevent their capture for cloning.
 
-    # implement this is mandatory
-    def _prepare_metadata(self):
-        """Prepare metadata for model initialisation.
+    # Mandatory: derive metadata consumed by the model constructor.
+    def _prepare_metadata(self) -> Any:
+        """Derive model metadata from the attached time series and config.
+
+        TODO: Describe each metadata field and how it is derived. Combine the
+        attached TimeSeries metadata with this module's configuration to provide
+        the dimensions, feature groups, and other information the model needs.
+        For example, derive static categorical features from the supplied static
+        and categorical column information instead of hardcoding their counts.
 
         Returns
         -------
-        dict
-            dictionary containing the params required to initialise the model.
-            # todo: add all the keys that the dict has
+        Any
+            TODO: Specify the concrete metadata type and its fields, matching
+            the model's metadata argument. The base property caches this result.
         """
-        # collect all the keys that are required for the model initialisation and
-        # can be derived in any way from the dataset
-        #
-        # This could be info that the user might have already provided while
-        # intializing the `TimeSeries` dataset class or this data module (from __init__)
-        # For eg, while initializing the `TimeSeries` dataset class, the user would've
-        # already provided what are static variables in the data.
-        # You might not want to add the exact keys that `TimeSeries` provide through its
-        # metadata into this method, rather parse them to get new information like
-        # combining the information that col1 and col3 are static, but only col1 is
-        # categorical to create a new key called static_categorical which has only col1
-        #
-        # Another way could be that some information can be derived from the input of
-        # data module - you might need to perform any basic operation on the data to
-        # derive this info.
+        # TODO: Parse the data schema and derive the model-specific metadata.
+        raise NotImplementedError("Derive model metadata for this data module.")
 
-    # implement this is mandatory
-    @property
-    def metadata(self):
-        """Compute metadata for model initialization.
+    # Mandatory: define preprocessing for a single series.
+    def _preprocess_data(self, series_idx: int | torch.Tensor) -> dict[str, Any]:
+        """Preprocess and cache one series for the windowed dataset.
 
-        This property returns a dictionary containing the shapes and key information
-        related to the time series model.
-        # todo add all the keys that the metadata has"""
-        # you can keep this method as it is. It just takes _prepare_metadata() to create
-        # this property
-        if self._metadata is None:
-            self._metadata = self._prepare_metadata()
-        return self._metadata
+        Parameters
+        ----------
+        series_idx : int or torch.Tensor
+            Index of the time series to preprocess.
 
-    # implement this is mandatory
-    def _preprocess_data(self, series_idx: torch.Tensor) -> list[dict[str, Any]]:
-        """Preprocess the data before feeding it into _ProcessedEncoderDecoderDataset.
+        Returns
+        -------
+        dict[str, Any]
+            TODO: Document the processed features, targets, static values, and
+            other entries read by the private dataset.
 
         Preprocessing steps
-        --------------------
-        # todo: document all the processing steps
+        -------------------
+        TODO: Describe normalization, feature transformation, and caching steps.
         """
-        # Add the preprocessing of data here that would be then passed to a private
-        # _Mydataset class, see datamodule/_dataset.py for more info.
+        # TODO: Prepare one series in the form consumed by _MyDataModuleDataset.
+        raise NotImplementedError("Preprocess one series.")
 
-    # implement this is mandatory
-    def setup(self, stage: str) -> None:
-        """Setup the DataModule.
-        todo: implement the DataModule.setup() method. Add complete docstring."""
-        # implement the setup method and handle different stages of the ML pipeline
-        # (train, test, predict, validation etc) accordingly.
+    # Mandatory: enumerate forecast windows for the selected series.
+    def _create_windows(self, indices: torch.Tensor) -> list[tuple[int, int, int, int]]:
+        """Create windows as (series, start, context length, prediction length).
 
-    # If needed create collate_fn, dataloader methods and other required helping methods
+        Parameters
+        ----------
+        indices : torch.Tensor
+            Series indices selected by the base module for the current split.
+
+        Returns
+        -------
+        list[tuple[int, int, int, int]]
+            Window descriptors: series index, start index, context length, and
+            prediction length. TODO: Explain split boundaries and window rules.
+        """
+        # TODO: Select valid windows without leaking observations between splits.
+        raise NotImplementedError("Create windows for the requested series indices.")
+
+    # Mandatory: connect the windows to the private dataset implementation.
+    def _build_dataset(self, indices: torch.Tensor) -> _MyDataModuleDataset:
+        """Build a dataset from series indices selected by the base module.
+
+        TODO: Update the dataset class name and constructor if its inputs change.
+        Keep window creation consistent with the selected base-module split.
+        """
+        return _MyDataModuleDataset(self, self._create_windows(indices))
+
+    @staticmethod
+    def collate_fn(
+        batch: list[
+            tuple[
+                dict[str, torch.Tensor],
+                torch.Tensor | list[torch.Tensor],
+            ]
+        ],
+    ) -> tuple[dict[str, torch.Tensor], torch.Tensor | list[torch.Tensor]]:
+        """Collate samples into the ``(x, y)`` batch expected by the model.
+
+        Parameters
+        ----------
+        batch : list of tuple
+            Samples returned by the private dataset's __getitem__ method.
+
+        Returns
+        -------
+        tuple
+            Batched input dictionary and target tensor, or list of target tensors.
+            TODO: Document input keys, tensor shapes, lengths, and padding rules.
+        """
+        # TODO: Stack or pad samples into the format required by forward and loss.
+        raise NotImplementedError("Collate samples into model inputs and targets.")
+
+    # TODO: Add documented helpers for any additional data-format-specific logic.

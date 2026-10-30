@@ -1,116 +1,138 @@
-"""Extension template for models.
+"""Extension template for a custom v2 forecasting model.
 
-Purpose of this implementation template:
-    quick implementation of new estimators following the template
-    NOT a concrete class to import! This is NOT a base class or concrete class!
-    This is to be used as a "fill-in" coding template.
+Purpose:
+    Provide a fill-in template for implementing a custom forecasting model.
+    This is not a concrete model or a base class to import.
 
-How to use this implementation template to implement a new estimator:
-- make a copy of the template in a suitable location, give it a descriptive name.
-    - if the name has more than one word (like Temporal Fusion Transformer), the name of
-    the file should be created by separating these words by a underscore (_).
-    For eg, for Temporal Fusion Transformer model, the name of the file would be
-    temporal_fusion_transformer.py.
-- work through all the "todo" comments below
-- fill in code for mandatory methods, and optionally for optional methods
-- you can add more private methods, but do not override BaseModel's private methods
-    an easy way to be safe is to prefix your methods with "_custom"
-- change docstrings for functions and the file
-- ensure interface compatibility by
-    pytorch-forecasting.utils._estimator_checks.check_estimator
-- once complete: use as a local library, or contribute to pytorch-forecasting via PR
-- IMPORTANT: if you have some custom layers that are used by the model, you should add
-    that to `pytorch-forecasting.layers` module and then import that layer in this file.
+How to use this template:
+- Copy this file into an importable package and rename the class.
+- Replace the example parameters with typed, documented options for your
+  architecture.
+- Complete the TODOs and document the implemented model and its purpose.
+- Initialize architecture-specific layers after reading required dimensions from
+  ``metadata``.
+- Add helper methods for architecture-specific logic. Do not override private
+  ``BaseModel`` methods other than the required ``_pkg`` linkage; prefix custom
+  helper methods with ``_custom`` where practical.
+- Import optional dependencies inside methods rather than at module level.
+- Run the v2 forecaster checks after implementing the linked forecaster.
 
-Mandatory methods to implement:
-    forward - the forward pass of the model
-    _pkg - method to access the package class of the model
+Required interfaces:
+    forward - return a dict containing the "prediction" tensor in the shape and
+        target layout expected by the selected datamodule and loss.
+    _pkg - return the linked BaseForecaster subclass. BaseModel currently exposes
+        this through its legacy ``pkg`` class property; the name does not mean that
+        this method should return a model-package class. Do not add ``model_pkg.py``
+        or a separate package wrapper.
 
-Testing - required for pytorch-forecasting test framework and check_estimator usage:
-    Use `model_pkg` class for this. See model_pkg.py in the same folder for more info
+The linked forecaster template is in ``model_forecaster.py``. It replaces the
+legacy ``model_pkg.py`` template and defines the estimator and data interfaces.
 """
 
-# todo: write an informative docstring for the file or module, remove the above
+from typing import Any
 
 import torch
+from torch import nn
+from torch.optim import Optimizer
 
+from pytorch_forecasting.metrics import Metric
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
-# todo: add any necessary imports here
-# import soft dependencies only inside methods of the class, not at the top of the file
-# donot import the model class at the module level, it should
-# be imported within the respective method to access that classes (namely _pkg).
+# TODO: Add imports required by your architecture.
+# Import optional dependencies inside methods rather than at module level.
 
 
-# todo: change class name and write docstring
+# TODO: Rename the class and document the implemented model.
 class MyModel(BaseModel):
-    """Custom Model.
-    todo: write docstring.
+    """Custom model template.
+    TODO: Replace this placeholder with an informative docstring.
 
-    todo: describe your custom forecaster here
+    TODO: Describe the architecture, its forecasting purpose, and any important
+    constraints on its inputs or predictions.
 
     Parameters
     ----------
-    parama : anytype
-        descriptive explanation of parama
-    paramb : string, optional (default='default')
-        descriptive explanation of paramb
-    paramc : boolean, optional (default=MyOtherEstimator(foo=42))
-        descriptive explanation of paramc
-    and so on
+    loss : Metric or nn.Module
+        Training loss passed to ``BaseModel``. The forecaster should provide a
+        default when appropriate.
+    parama, paramb, paramc
+        Placeholder architecture options. Replace these with documented,
+        appropriately typed parameters for the implemented model.
+    metadata : Any, optional
+        Data-derived metadata supplied by ``BaseForecaster`` after the
+        datamodule is attached to data.
     """
 
-    # todo: add any hyper-parameters and components to constructor
-    # All the params of __init__() should ideally have a "good" default value
-    def __init__(self, parama=None, paramb="default", paramc=None):
-        # save the hparams, you can ignore some of them
-        # for example
-        self.save_hyperparameters(ignore=["loss", "logging_metrics", "optimizer"])
-        # add any params to super.__init__() that you want to pass
-        # to the parent BaseModel
-        # example:
-        # super().__init__(
-        #             loss=loss,
-        #             logging_metrics=logging_metrics,
-        #             optimizer=optimizer,
-        #             optimizer_params=optimizer_params,
-        #             lr_scheduler=lr_scheduler,
-        #             lr_scheduler_params=lr_scheduler_params,
-        # )
-        # Look at the __init__() of BaseModel to see which params we need to pass to
-        # super().__init__()
-        super().__init__(loss=parama)  # or anyother param
-
-        # collect all the params passed to __init__() below
-        # todo: write any hyper-parameters and components to self
+    # TODO: Replace the example parameters with typed, documented model options.
+    # Keep the shared loss, logging, optimizer, and scheduler options aligned
+    # with BaseModel.__init__.
+    def __init__(
+        self,
+        loss: Metric | nn.Module,
+        parama: Any = None,
+        paramb: str = "default",
+        paramc: Any = None,
+        logging_metrics: list[nn.Module] | None = None,
+        optimizer: Optimizer | str | None = "adam",
+        optimizer_params: dict | None = None,
+        lr_scheduler: str | None = None,
+        lr_scheduler_params: dict | None = None,
+        metadata: Any | None = None,
+    ):
+        # Forward the shared training configuration to BaseModel.
+        super().__init__(
+            loss=loss,
+            logging_metrics=logging_metrics,
+            optimizer=optimizer,
+            optimizer_params=optimizer_params,
+            lr_scheduler=lr_scheduler,
+            lr_scheduler_params=lr_scheduler_params,
+        )
+        # Exclude module-valued settings and runtime metadata, as in the TFT v2
+        # implementation. Update this list if the constructor changes.
+        self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
+        # BaseForecaster derives metadata from the attached datamodule and passes
+        # it here. Use required entries to size architecture-specific layers; for
+        # direct model construction, pass data_module.metadata explicitly.
+        self.metadata = metadata
         self.parama = parama
         self.paramb = paramb
-        # IMPORTANT: the self.params should never be overwritten or mutated from now on
-        # for handling defaults etc, write to other attributes, e.g., self._paramc
         self.paramc = paramc
 
-        # create anyother required params (like self.linear_layer etc) after this
+        # TODO: Initialize architecture-specific layers using model options and
+        # the required dimensions from self.metadata.
 
-    # implement this is mandatory
     @classmethod
     def _pkg(cls):
-        """Package containing the model."""
-        # import the package class from the model package file
-        from pytorch_forecasting.models.my_model.model_pkg import MyModel_pkg
+        """Return the BaseForecaster subclass linked to this model.
 
-        return MyModel_pkg
-
-    # implement this is mandatory
-    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
-        # todo: write a clear docstring in numpydoc style
+        BaseModel exposes this class through its legacy ``pkg`` linkage; the
+        linked class is now a forecaster, not a model-package class.
         """
-        Forward pass of the model.
+        # TODO: Update the module path and class name when copying the template.
+        from pytorch_forecasting.models.my_model.model_forecaster import (
+            MyModelForecaster,
+        )
+
+        return MyModelForecaster
+
+    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+        """Run the model forward pass.
 
         Parameters
-        ---------
+        ----------
         x : dict[str, torch.Tensor]
-            input data generated from the data loaders of data modules
-        """
-        # todo: implement the forward loop
+            Batch inputs produced by the selected datamodule. Keys and tensor
+            formats depend on that datamodule.
 
-    # implement any helping methods for the class
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Model outputs. The base model and its loss require a ``"prediction"``
+            tensor; additional output keys may be used for prediction modes.
+        """
+        # TODO: Implement the forward pass for the selected datamodule's inputs.
+        # Return {"prediction": tensor} for the training loss.
+        raise NotImplementedError("Implement the model forward pass.")
+
+    # TODO: Add documented helper methods for architecture-specific logic.
