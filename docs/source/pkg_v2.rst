@@ -4,6 +4,7 @@ Package (P) Layer v2
 .. warning::
     Please note that the v2 modules are currently in active-development and is in beta right now, so please use this API with caution.
     See complete documentation for v2 API :doc:`here <api_v2>` and stable v1 documentation :doc:`here <api>`.
+    Migrating an existing model implementation to v2? See :doc:`migration_v1_to_v2`.
 
 .. currentmodule:: pytorch_forecasting
 
