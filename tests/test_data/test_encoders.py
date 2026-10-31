@@ -4,6 +4,8 @@ import itertools
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.utils.validation import NotFittedError, check_is_fitted
 import torch
 
@@ -180,6 +182,25 @@ def test_MultiNormalizer_fitted():
         check_is_fitted(normalizer)
     except NotFittedError:
         pytest.fail(f"{NotFittedError}")
+
+
+def test_MultiNormalizer_requires_all_pipeline_normalizers_fitted():
+    data = np.array([[1.0], [2.0]])
+    normalizers = [
+        Pipeline([("scaler", StandardScaler())]),
+        Pipeline([("scaler", StandardScaler())]),
+    ]
+    normalizer = MultiNormalizer(normalizers)
+
+    with pytest.raises(NotFittedError):
+        check_is_fitted(normalizer)
+
+    normalizers[0].fit(data)
+    with pytest.raises(NotFittedError):
+        check_is_fitted(normalizer)
+
+    normalizers[1].fit(data)
+    check_is_fitted(normalizer)
 
 
 def test_TorchNormalizer_dtype_consistency():
