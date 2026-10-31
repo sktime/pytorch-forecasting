@@ -63,8 +63,8 @@ Example
 
     import lightning.pytorch as pl
     from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor
-    from lightning.pytorch.tuner import Tuner
     from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer
+    from pytorch_forecasting.tuning import Tuner
 
     # load data
     data = ...
