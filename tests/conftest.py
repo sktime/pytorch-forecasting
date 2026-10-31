@@ -4,6 +4,13 @@ import sys
 import numpy as np
 import pytest
 
+try:
+    import matplotlib
+
+    matplotlib.use("Agg")
+except ImportError:
+    pass
+
 sys.path.insert(0, os.path.abspath(os.path.join(__file__, "../..")))  # isort:skip
 
 
