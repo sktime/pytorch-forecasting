@@ -1,5 +1,7 @@
 """Automated test for all metrics in PyTorch Forecasting."""
 
+from copy import deepcopy
+
 import pytest
 from skbase.utils.dependencies import _check_soft_dependencies
 import torch
@@ -550,3 +552,72 @@ class TestAllPtMetrics(MetricPackageConfig, MetricFixtureGenerator):
             assert (
                 res.shape == y_pred.shape
             ), f"Loss should be a tensor with shape {y_pred.shape}, got {res.shape}."  # noqa: E501
+
+    @pytest.mark.parametrize("target_type", ["standard", "packed", "weighted"])
+    def test_negative_mismatched_shapes(
+        self, object_pkg, object_instance, request, target_type
+    ):
+        """Test that metrics raise an error for mismatched input shapes.
+
+        Negative test case: predictions and targets whose batch or time
+        dimensions do not agree should be rejected by ``update`` instead of
+        silently producing a metric value.
+
+        Parameters
+        ----------
+        object_pkg: SkbaseBaseObject
+            The package object containing the metric.
+        object_instance: Metric
+            An instance of the metric class to be tested.
+        request: pytest.FixtureRequest
+            The pytest request object to access fixtures.
+        target_type: str
+            The type of target data (e.g., "standard", "packed", "weighted").
+        """
+
+        prepared_data = self._setup_metric_test_scenario(
+            object_pkg, object_instance, target_type, request
+        )
+
+        if prepared_data is None:
+            return None
+
+        metric, y_pred, y = prepared_data
+
+        y_main = y
+        if isinstance(y, list | tuple) and not isinstance(y, rnn.PackedSequence):
+            y_main, _ = y
+
+        corrupted_pairs = []
+        if isinstance(y_main, torch.Tensor) and y_main.ndim >= 2:
+            # target shortened along the time dimension
+            corrupted_pairs.append((y_pred, y_main[:, :-1]))
+        if isinstance(y_pred, torch.Tensor) and y_pred.ndim >= 2:
+            # predictions shortened along the time dimension
+            corrupted_pairs.append((y_pred[:, :-1], y))
+            # predictions with an extra batch element
+            corrupted_pairs.append((torch.cat([y_pred, y_pred[:1]], dim=0), y))
+
+        if not corrupted_pairs:
+            return None
+
+        for bad_pred, bad_y in corrupted_pairs:
+            metric_copy = deepcopy(metric)
+            with pytest.raises((RuntimeError, ValueError)):
+                metric_copy.update(bad_pred, bad_y)
+
+    def test_negative_compute_before_update(self, object_instance):
+        """Test that ``compute`` raises an error before any ``update``.
+
+        Negative test case: computing a metric that has not seen any data
+        should raise an error instead of returning a value.
+
+        Parameters
+        ----------
+        object_instance: Metric
+            An instance of the metric class to be tested.
+        """
+
+        metric = deepcopy(object_instance)
+        with pytest.raises(AssertionError):
+            metric.compute()
