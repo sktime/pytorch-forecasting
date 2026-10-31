@@ -146,8 +146,8 @@ def test_basic_initialization(tft_model_params_fixture_func):
         + metadata["static_continuous_features"]
     )
     assert isinstance(model.lstm_encoder, nn.LSTM)
-    assert model.lstm_encoder.input_size == max(1, model.encoder_input_dim)
-    assert isinstance(model.self_attention, nn.MultiheadAttention)
+    assert model.lstm_encoder.input_size == model.hidden_size
+    assert isinstance(model.multihead_attn, nn.Module)
     if hasattr(model, "hparams") and model.hparams:
         assert model.hparams.get("hidden_size") == HIDDEN_SIZE_TEST
     assert model.output_size == OUTPUT_SIZE_TEST
@@ -167,10 +167,10 @@ def test_initialization_no_time_varying_features(tft_model_params_fixture_func):
     model = TFT(**tft_model_params_fixture_func, metadata=metadata)
     assert model.encoder_input_dim == 0
     assert model.encoder_var_selection is None
-    assert model.lstm_encoder.input_size == 1
+    assert model.lstm_encoder.input_size == HIDDEN_SIZE_TEST
     assert model.decoder_input_dim == 0
     assert model.decoder_var_selection is None
-    assert model.lstm_decoder.input_size == 1
+    assert model.lstm_decoder.input_size == HIDDEN_SIZE_TEST
 
 
 def test_initialization_no_static_features(tft_model_params_fixture_func):
@@ -185,7 +185,7 @@ def test_initialization_no_static_features(tft_model_params_fixture_func):
     )
     model = TFT(**tft_model_params_fixture_func, metadata=metadata)
     assert model.static_input_dim == 0
-    assert model.static_context_linear is None
+    assert model.static_variable_selection is None
 
 
 @pytest.mark.parametrize(
