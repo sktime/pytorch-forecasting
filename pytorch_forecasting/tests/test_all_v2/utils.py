@@ -60,3 +60,29 @@ def _setup_pkg_and_data(
     )
 
     return pkg, test_data, default_datamodule_cfg
+
+
+def _make_minimal_vignette_data(
+    n_groups: int = 2,
+    n_timesteps: int = 50,
+) -> TimeSeries:
+    """Create a minimal synthetic TimeSeries dataset for vignette tests."""
+    import numpy as np
+    import pandas as pd
+
+    df = pd.DataFrame(
+        {
+            "group": np.repeat(np.arange(n_groups), n_timesteps),
+            "time": np.tile(np.arange(n_timesteps), n_groups),
+            "target": 100.0 + np.tile(np.arange(n_timesteps), n_groups).astype(float),
+            "feature": np.tile(np.arange(n_timesteps), n_groups).astype(float),
+        }
+    )
+    return TimeSeries(
+        df,
+        time="time",
+        target="target",
+        group=["group"],
+        num=["feature"],
+        known=["feature"],
+    )
