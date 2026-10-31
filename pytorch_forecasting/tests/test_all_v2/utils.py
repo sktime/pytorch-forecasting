@@ -4,7 +4,8 @@ from lightning.pytorch.loggers import TensorBoardLogger
 
 from pytorch_forecasting.base._base_pkg import Base_pkg
 from pytorch_forecasting.data import TimeSeries
-from pytorch_forecasting.metrics import SMAPE
+from pytorch_forecasting.data.encoders import EncoderNormalizer
+from pytorch_forecasting.metrics import SMAPE, DistributionLoss
 
 
 def _setup_pkg_and_data(
@@ -30,6 +31,10 @@ def _setup_pkg_and_data(
 
     if "loss" not in model_cfg:
         model_cfg["loss"] = SMAPE()
+
+    if isinstance(model_cfg.get("loss"), DistributionLoss):
+        if "target_normalizer" not in datamodule_cfg:
+            datamodule_cfg["target_normalizer"] = EncoderNormalizer()
 
     default_datamodule_cfg = {
         "train_val_test_split": (0.8, 0.2),
