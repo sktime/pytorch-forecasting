@@ -5,6 +5,13 @@ FAQ
 
 Common issues and answers. Other places to seek help from:
 
+.. admonition::
+   **API v2 is in development!**
+
+   | We are currently reworking the API to a streamlined v2 interface.
+   | For v2 (beta) FAQ, see :doc:`faq_v2`.
+   | For v1 (current) FAQ, see below.
+
 * :ref:`Tutorials <tutorials>`
 * `PyTorch Lightning documentation <https://pytorch-lightning.readthedocs.io>`_ and issues
 * `PyTorch documentation <https://pytorch.org/>`_ and issues
