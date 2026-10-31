@@ -4,7 +4,16 @@ from pytorch_forecasting.models.base._base_object import _BasePtForecaster
 
 
 class TiDEModel_pkg(_BasePtForecaster):
-    """Package container for TiDE Model."""
+    """Package container for TiDE Model.
+
+    Examples
+    --------
+    The package container resolves to the user-facing model class:
+
+    >>> from pytorch_forecasting.models.tide import TiDEModel_pkg
+    >>> TiDEModel_pkg.get_cls().__name__
+    'TiDEModel'
+    """
 
     _tags = {
         "info:name": "TiDEModel",
