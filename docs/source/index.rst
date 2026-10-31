@@ -6,60 +6,52 @@
 PyTorch Forecasting Documentation
 ==================================
 
-.. admonition::
-   **Try the API v2 pre-release!**
+.. warning::
 
-   | A New API version 2 is in development. Try it out before release: :doc:`v2 API Reference <api_v2>`
-   | **Caution: v2 is WIP and unstable. Not yet production-ready.**
+   The v2 API is in beta and unstable. It may change without warning and is not
+   ready for production use. Feedback is welcome in
+   `issue 1736 <https://github.com/sktime/pytorch-forecasting/issues/1736>`_.
 
 .. raw:: html
 
    <a class="github-button" href="https://github.com/sktime/pytorch-forecasting" data-icon="octicon-star" data-size="large" data-show-count="true" aria-label="Star sktime/pytorch-forecasting on GitHub">GitHub</a>
 
 
-Our article on `Towards Data Science <https://towardsdatascience.com/introducing-pytorch-forecasting-64de99b9ef46>`_
-introduces the package and provides background information.
+PyTorch Forecasting provides neural network models for time series forecasting,
+for practical use and for research. It gives beginners sensible defaults and
+gives experienced users full control over each step.
 
-PyTorch Forecasting aims to ease state-of-the-art
-timeseries forecasting with neural networks for both real-world cases and
-research alike. The goal is to provide a high-level API with maximum flexibility for
-professionals and reasonable defaults for beginners.
-Specifically, the package provides
+* :py:class:`~pytorch_forecasting.data.timeseries._timeseries_v2.TimeSeries`
+  wraps a DataFrame and records the role of each column.
+* Datamodules scale the data, cut windows and build the dataloaders.
+* Forecasters train any model with the same ``fit`` and ``predict`` methods.
+* Several forecasting architectures, listed in the :doc:`model overview <model_list>`.
+* Multi-horizon losses and metrics.
 
-* A timeseries dataset class which abstracts handling variable transformations, missing values,
-  randomized subsampling, multiple history lengths, etc.
-* A base model class which provides basic training of timeseries models along with logging in TensorBoard
-  and generic visualizations such as actual vs predictions and dependency plots
-* Multiple neural network architectures for timeseries forecasting that have been enhanced
-  for real-world deployment and come with in-built interpretation capabilities
-* Multi-horizon timeseries metrics
-* Hyperparameter tuning with `optuna <https://optuna.readthedocs.io/>`_
+The package is built on `PyTorch Lightning <https://lightning.ai/docs/pytorch/stable/>`_,
+so models train on CPUs and on one or several GPUs without code changes.
 
-The package is built on `PyTorch Lightning <https://pytorch-lightning.readthedocs.io/>`_ to allow
-training on CPUs, single and multiple GPUs out-of-the-box.
-
-If you do not have pytorch already installed, follow the :ref:`detailed installation instructions<install>`.
-
-Otherwise, proceed to install the package by executing
+If you do not have PyTorch installed yet, follow the
+:ref:`installation instructions <install>`. Otherwise install the package with
 
 .. code-block::
 
    pip install pytorch-forecasting
 
-or to install via conda
+or with conda
 
 .. code-block::
 
-   conda install pytorch-forecasting pytorch>=1.7 -c pytorch -c conda-forge
+   conda install pytorch-forecasting pytorch>=2.0.0 -c pytorch -c conda-forge
 
-To use the MQF2 loss (multivariate quantile loss), also execute
+To use the MQF2 loss (multivariate quantile loss), also run
 
 .. code-block::
 
    pip install pytorch-forecasting[mqf2]
 
-Visit :ref:`Getting started <getting-started>` to learn more about the package and detailed installation instruction.
-The :ref:`Tutorials <tutorials>` section provides guidance on how to use models and implement new ones.
+:ref:`Getting started <getting-started>` shows a first model. If you have v1 code,
+read :doc:`migration`.
 
 .. toctree::
    :titlesonly:
@@ -67,14 +59,12 @@ The :ref:`Tutorials <tutorials>` section provides guidance on how to use models 
    :maxdepth: 6
 
    getting-started
-   tutorials
-   data
-   models
-   metrics
-   faq
    installation
-   api
+   tutorials_v2
+   api_v2
    model_list
+   migration
+   faq
    CHANGELOG
 
 

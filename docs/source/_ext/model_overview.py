@@ -117,8 +117,10 @@ def _get_model_rows():
         # Build the clean display name (strip _pkg / _pkg_v2 suffixes)
         display_name = _clean_model_name(klass.__name__)
 
-        # Build the module path for cross-reference to the model implementation.
-        link_class = _model_class_for_link(klass)
+        version = _object_type_to_version(tags.get("object_type"))
+
+        # v2 rows link to the forecaster, v1 rows to the model implementation.
+        link_class = klass if version == "v2" else _model_class_for_link(klass)
         module = link_class.__module__
         qualname = link_class.__qualname__
         ref = f":py:class:`{display_name} <{module}.{qualname}>`"
@@ -130,8 +132,6 @@ def _get_model_rows():
         y_types = tags.get("info:y_type") or []
         if isinstance(y_types, str):
             y_types = [y_types]
-
-        version = _object_type_to_version(tags.get("object_type"))
 
         # Extract compatible datamodules dynamically
         dm_refs = []

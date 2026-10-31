@@ -1,12 +1,9 @@
 Metrics
 ==========
 
-.. admonition::
-   **Try the API v2 pre-release!**
-
-   | A New API version 2 is in development. Try it out before release: :doc:`v2 API Reference <api_v2>`
-   | Note: that ``metrics`` are SAME for both the versions.
-   | **Caution: v2 is WIP and unstable. Not yet production-ready.**
+.. warning::
+    The v2 API is in beta and unstable. It may change without warning and is not
+    ready for production use.
 
 Multiple metrics have been implemented to ease adaptation.
 
