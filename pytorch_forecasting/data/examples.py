@@ -3,6 +3,7 @@ Example datasets for tutorials and testing.
 """
 
 from pathlib import Path
+import tempfile
 from urllib.request import urlretrieve
 
 import numpy as np
@@ -28,7 +29,10 @@ def _get_data_by_filename(fname: str) -> Path:
     # check if file exists - download if necessary
     if not full_fname.exists():
         url = BASE_URL + fname
-        urlretrieve(url, full_fname)  # noqa: S310
+        with tempfile.TemporaryDirectory(dir=full_fname.parent) as temp_dir:
+            temp_fname = Path(temp_dir).joinpath(full_fname.name)
+            urlretrieve(url, temp_fname)  # noqa: S310
+            temp_fname.replace(full_fname)
 
     return full_fname
 
