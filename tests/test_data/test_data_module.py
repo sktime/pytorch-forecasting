@@ -726,3 +726,37 @@ def test_group_normalizer_uses_groups():
         mean1 = target1["target"].mean().abs()
         assert mean0 < 1.0, "Group 0 target should be normalized near 0"
         assert mean1 < 1.0, "Group 1 target should be normalized near 0"
+
+
+def test_encoder_normalizer_scales_decoder_target(sample_timeseries_data):
+    """Decoder target must use the EncoderNormalizer fit on the encoder window.
+
+    Regression test for https://github.com/sktime/pytorch-forecasting/issues/2360.
+    """
+    dm = EncoderDecoderTimeSeriesDataModule(
+        time_series_dataset=sample_timeseries_data,
+        max_encoder_length=15,
+        max_prediction_length=5,
+        batch_size=4,
+        target_normalizer=EncoderNormalizer(),
+    )
+    dm.setup(stage="fit")
+
+    x, y = dm.train_dataset[0]
+    series_idx, start_idx, enc_length, pred_length = dm.train_dataset.windows[0]
+    raw = dm.train_dataset.preprocessed_data[series_idx]["target"]
+    raw_past = raw[start_idx : start_idx + enc_length].squeeze(-1)
+    raw_future = raw[
+        start_idx + enc_length : start_idx + enc_length + pred_length
+    ].squeeze(-1)
+
+    reference = EncoderNormalizer()
+    reference.fit(raw_past)
+    expected = torch.as_tensor(reference.transform(raw_future), dtype=y.dtype).reshape(
+        y.shape
+    )
+
+    assert not torch.allclose(y, raw_future), "decoder target is still on the raw scale"
+    assert torch.allclose(y, expected, atol=1e-5)
+    assert torch.isfinite(x["target_past"]).all()
+    assert torch.isfinite(y).all()
