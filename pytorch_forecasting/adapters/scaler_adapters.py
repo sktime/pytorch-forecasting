@@ -164,23 +164,29 @@ class ScalerAdapter:
     def fit_transform_sequence(
         self, data: ArrayLike, X: pd.DataFrame = None
     ) -> torch.Tensor:
-        """Fit-and-transform only per-sequence sub-normalizers; transform the rest.
+        """Fit per-sequence normalizers and transform the sequence.
 
-        Used at ``__getitem__`` time for encoder windows. Non-per-sequence
-        normalizers use their already-fitted global state.
+        For a single-target normalizer, fitting and transformation are performed
+        only when the normalizer is configured to fit per sequence. Otherwise,
+        the input is returned as a tensor without applying sequence-specific
+        fitting.
 
-        For single-target adapters this collapses to fit_transform
-        (EncoderNormalizer) or transform (everything else).
+        For multi-target normalizers, each target is processed independently
+        according to whether its sub-normalizer is configured to fit per sequence.
 
         Parameters
         ----------
         data : tensor, ndarray, or Series
-            Shape ``(enc_length,)`` or ``(enc_length, n_targets)``.
+            Shape ``(n_samples,)`` for single-target data or
+            ``(n_samples, n_targets)`` for multi-target data.
+        X : pd.DataFrame, optional
+            Group columns. Required when the normalizer is a GroupNormalizer or
+            when a MultiNormalizer contains GroupNormalizer sub-normalizers.
 
         Returns
         -------
         torch.Tensor
-            Same shape as input.
+            Transformed sequence as a PyTorch tensor.
         """
         if not self.is_multi:
             return (
@@ -198,4 +204,59 @@ class ScalerAdapter:
             col = t[:, idx]
             col = sub.fit_transform(col, X) if sub.fit_per_sequence else col
             columns.append(col.unsqueeze(-1))
-        return torch.cat(columns, dim=-1)
+
+        result = torch.cat(columns, dim=-1)
+
+        if _to_tensor(data).ndim == 1 and result.shape[-1] == 1:
+            result = result.squeeze(-1)
+
+        return result
+
+    def transform_sequence(
+        self, data: ArrayLike, X: pd.DataFrame = None
+    ) -> torch.Tensor:
+        """Transform a sequence using already-fitted per-sequence normalizers.
+
+        For a single-target normalizer, transformation is performed only when
+        the normalizer is configured to fit per sequence. The fitted state is
+        reused and no fitting is performed on the input sequence.
+
+        For multi-target normalizers, each target is processed independently
+        using its corresponding sub-normalizer. Only sub-normalizers configured
+        to fit per sequence are applied; other targets are left unchanged.
+
+        Parameters
+        ----------
+        data : tensor, ndarray, or Series
+            Shape ``(n_samples,)`` for single-target data or
+            ``(n_samples, n_targets)`` for multi-target data.
+        X : pd.DataFrame, optional
+            Group columns. Required when the normalizer is a GroupNormalizer or
+            when a MultiNormalizer contains GroupNormalizer sub-normalizers.
+
+        Returns
+        -------
+        torch.Tensor
+            Transformed sequence as a PyTorch tensor.
+        """
+        if not self.is_multi:
+            return (
+                self.transform(data, X) if self.fit_per_sequence else _to_tensor(data)
+            )
+
+        t = _to_tensor(data)
+        if t.ndim == 1:
+            t = t.unsqueeze(-1)
+
+        columns = []
+        for idx, sub in enumerate(self._sub_adapters):
+            col = t[:, idx]
+            col = sub.transform(col, X) if sub.fit_per_sequence else col
+            columns.append(col.unsqueeze(-1))
+
+        result = torch.cat(columns, dim=-1)
+
+        if _to_tensor(data).ndim == 1 and result.shape[-1] == 1:
+            result = result.squeeze(-1)
+
+        return result
