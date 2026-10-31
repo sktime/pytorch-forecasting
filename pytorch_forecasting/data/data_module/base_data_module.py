@@ -310,8 +310,21 @@ class BaseTimeSeriesDataModule(LightningDataModule):
             self._val_indices = self._split_indices[1:]
             self._test_indices = self._split_indices[1:]
         else:
-            train_size = int(self.train_val_test_split[0] * total_series)
-            val_size = int(self.train_val_test_split[1] * total_series)
+            fractions = self.train_val_test_split
+            train_size = int(fractions[0] * total_series)
+            val_size = int(fractions[1] * total_series)
+            # rounding down gives validation no series at all when there are
+            # few series, e.g. 3 to 6 with the default split; take one from the
+            # test remainder, which holds the rounding surplus, or from train
+            # when test cannot spare one
+            if val_size == 0 and fractions[1] > 0:
+                test_size = total_series - train_size
+                test_min = 1 if len(fractions) == 3 and fractions[2] > 0 else 0
+                if test_size > test_min:
+                    val_size = 1
+                elif train_size > 1:
+                    train_size -= 1
+                    val_size = 1
             self._train_indices = self._split_indices[:train_size]
             self._val_indices = self._split_indices[train_size : train_size + val_size]
             self._test_indices = self._split_indices[train_size + val_size :]
