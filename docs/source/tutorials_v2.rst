@@ -15,3 +15,4 @@ The following tutorials for version 2 can be also found as `notebooks on GitHub 
 
    tutorials/ptf_V2_example
    tutorials/tslib_v2_example
+   tutorials/dlinear_v2_example
