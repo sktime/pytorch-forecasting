@@ -4,7 +4,15 @@ from pytorch_forecasting.models.base._base_object import _BasePtForecaster
 
 
 class NBeats_pkg(_BasePtForecaster):
-    """NBeats package container."""
+    """NBeats package container.
+
+    Examples
+    --------
+    The package container resolves to the user-facing model class:
+
+    >>> NBeats_pkg.get_cls().__name__
+    'NBeats'
+    """
 
     _tags = {
         "info:name": "NBeats",
