@@ -12,6 +12,7 @@ import torch
 from pytorch_forecasting import GroupNormalizer, MultiNormalizer, NaNLabelEncoder
 from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
 from pytorch_forecasting.data.encoders import EncoderNormalizer, TorchNormalizer
+from pytorch_forecasting.data.split.splitters import RandomSplitter
 from pytorch_forecasting.data.timeseries import TimeSeries
 
 
@@ -77,7 +78,7 @@ def data_module(sample_timeseries_data):
         max_encoder_length=24,
         max_prediction_length=12,
         batch_size=4,
-        train_val_test_split=(0.7, 0.15, 0.15),
+        splitter=RandomSplitter((0.7, 0.15, 0.15)),
     )
     return dm
 
@@ -98,7 +99,6 @@ def test_init(sample_timeseries_data):
     assert dm._min_encoder_length == 24
     assert dm._min_prediction_length == 12
     assert dm.batch_size == 8
-    assert dm.train_val_test_split == (0.7, 0.15, 0.15)
 
     assert isinstance(dm.time_series_metadata, dict)
     assert "cols" in dm.time_series_metadata
@@ -431,7 +431,7 @@ def test_different_train_val_test_split(sample_timeseries_data):
         max_encoder_length=24,
         max_prediction_length=12,
         batch_size=4,
-        train_val_test_split=(0.8, 0.1, 0.1),
+        splitter=RandomSplitter((0.8, 0.1, 0.1)),
     )
 
     dm.setup()
