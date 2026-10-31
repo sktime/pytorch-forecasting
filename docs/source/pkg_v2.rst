@@ -94,14 +94,14 @@ See the detailed API documentation for the available V2 Package classes below:
 .. autosummary::
    :toctree: api
 
-   models.temporal_fusion_transformer._tft_pkg_v2.TFT_pkg_v2
-   models.dlinear._dlinear_pkg_v2.DLinear_pkg_v2
-   models.samformer._samformer_v2_pkg.Samformer_pkg_v2
-   models.tide._tide_dsipts._tide_v2_pkg.TIDE_pkg_v2
-   models.timexer._timexer_pkg_v2.TimeXer_pkg_v2
-   models.xlstm._xlstm_pkg_v2.xLSTMTime_pkg_v2
-   models.mlp._decodermlp_pkg_v2.DecoderMLP_pkg_v2
-   models.softs._softs_pkg_v2.SOFTS_pkg_v2
-   models.scinet._scinet_pkg_v2.SCINet_pkg_v2
-   models.patch_tst._patch_tst_pkg_v2.PatchTST_pkg_v2
-   models.frets._frets_pkg_v2.FreTS_pkg_v2
+   models.temporal_fusion_transformer._tft_forecaster_v2.TFTForecaster
+   models.dlinear._dlinear_forecaster_v2.DLinearForecaster
+   models.samformer._samformer_forecaster_v2.SamformerForecaster
+   models.tide._tide_dsipts._tide_forecaster_v2.TIDEForecaster
+   models.timexer._timexer_forecaster_v2.TimeXerForecaster
+   models.xlstm._xlstm_forecaster_v2.xLSTMTimeForecaster
+   models.mlp._decodermlp_forecaster_v2.DecoderMLPForecaster
+   models.softs._softs_forecaster_v2.SOFTSForecaster
+   models.scinet._scinet_forecaster_v2.SCINetForecaster
+   models.patch_tst._patch_tst_forecaster_v2.PatchTSTForecaster
+   models.frets._frets_forecaster_v2.FreTSForecaster
