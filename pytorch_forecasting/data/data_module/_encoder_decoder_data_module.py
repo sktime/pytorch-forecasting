@@ -929,6 +929,7 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
         for idx in indices:
             series_idx = idx.item()
             sample = self.time_series[series_idx]
+            self.series_times[series_idx] = sample["t"]
             sequence_length = len(sample["y"])
 
             if sequence_length < self.max_encoder_length + self.max_prediction_length:

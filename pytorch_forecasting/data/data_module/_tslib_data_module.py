@@ -621,6 +621,7 @@ class TslibDataModule(BaseTimeSeriesDataModule):
         for idx in indices:
             series_idx = idx.item() if isinstance(idx, torch.Tensor) else idx
             sample = self.time_series[series_idx]
+            self.series_times[series_idx] = sample["t"]
             sequence_length = len(sample["t"])
 
             if sequence_length < min_seq_length:

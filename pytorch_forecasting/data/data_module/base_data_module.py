@@ -107,6 +107,7 @@ class BaseTimeSeriesDataModule(LightningDataModule):
         self.val_windows = None
         self.test_windows = None
         self.predict_windows = None
+        self.series_times = {}
         self.train_dataset = None
         self.val_dataset = None
         self.test_dataset = None

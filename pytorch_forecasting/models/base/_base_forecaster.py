@@ -209,7 +209,9 @@ class BaseForecaster(_BasePtObject_v2):
         return dm
 
     @staticmethod
-    def _window_index(data: TimeSeries, windows: list) -> pd.DataFrame:
+    def _window_index(
+        data: TimeSeries, windows: list, series_times: dict[int, np.ndarray]
+    ) -> pd.DataFrame:
         """Label each forecast step of ``windows`` with its group and time.
 
         Parameters
@@ -219,6 +221,8 @@ class BaseForecaster(_BasePtObject_v2):
         windows : list of tuple
             One entry per window, ``(series_idx, start_idx, encoder_length,
             prediction_length)``, as recorded by the prediction dataset.
+        series_times : dict of int to np.ndarray
+            Time axis of each series, as recorded by the datamodule.
 
         Returns
         -------
@@ -228,7 +232,10 @@ class BaseForecaster(_BasePtObject_v2):
             time of the window.
         """
         group, time = data._group, data._time
-        keys, times, offsets = data.get_time_index()
+        keys = [k if isinstance(k, tuple) else (k,) for k in data._group_ids]
+        per_series = [series_times[s] for s in range(len(data))]
+        times = np.concatenate(per_series)
+        offsets = np.cumsum([0] + [len(t) for t in per_series])
 
         w = np.fromiter(
             itertools.chain.from_iterable(windows),
@@ -467,7 +474,7 @@ class BaseForecaster(_BasePtObject_v2):
                 info["y"] = dm.inverse_transform_target(info["y"], windows)
             predictions = self._to_timeseries(
                 dm.inverse_transform_target(predictions["prediction"], windows),
-                index=self._window_index(data, windows),
+                index=self._window_index(data, windows, dm.series_times),
                 time=data._time,
                 group=data._group,
                 metadata=data.get_metadata(),
