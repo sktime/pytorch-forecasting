@@ -199,3 +199,66 @@ class ScalerAdapter:
             col = sub.fit_transform(col, X) if sub.fit_per_sequence else col
             columns.append(col.unsqueeze(-1))
         return torch.cat(columns, dim=-1)
+
+    def get_parameters(
+        self, X: pd.DataFrame = None
+    ) -> torch.Tensor | list[torch.Tensor] | None:
+        """
+        Returns parameters that were used for encoding.
+
+        Parameters
+        ----------
+        X : pd.DataFrame, optional
+            Group columns, one row per sample. Required when scaler is
+            GroupNormalizer or when MultiNormalizer contains GroupNormalizer
+            sub-normalizers.
+
+        Returns
+        -------
+        torch.Tensor, list of torch.Tensor or None
+            ``(center, scale)`` of shape ``(1, 2)`` or ``(n_samples, 2)``, one
+            entry per target for MultiNormalizer. None if the target is not
+            scaled, or if the scaler keeps its parameters internally (sklearn).
+        """
+        if self._scaler is None or self.fit_per_sequence:
+            return None
+        if self.is_multi:
+            return [sub.get_parameters(X) for sub in self._sub_adapters]
+        if self.is_label_encoder:
+            return None
+        return self._strategy.get_parameters(self._scaler, X)
+
+    def inverse_transform(
+        self,
+        data: torch.Tensor,
+        target_scale: torch.Tensor | list[torch.Tensor] | None = None,
+    ) -> torch.Tensor:
+        """
+        Inverse scale.
+
+        Parameters
+        ----------
+        data : torch.Tensor
+            Scaled data of shape ``(n_samples,)`` for single-target or
+            ``(n_samples, n_targets)`` for multi-target.
+        target_scale : torch.Tensor or list of torch.Tensor, optional
+            As returned by ``get_parameters``.
+
+        Returns
+        -------
+        torch.Tensor
+            De-scaled data, same shape as input.
+        """
+        if self._scaler is None or self.fit_per_sequence:
+            return data
+        if self.is_multi:
+            columns = [
+                sub.inverse_transform(data[:, idx], scale)
+                for idx, (sub, scale) in enumerate(
+                    zip(self._sub_adapters, target_scale)
+                )
+            ]
+            return torch.stack(columns, dim=-1)
+        if self.is_label_encoder:
+            return data
+        return self._strategy.inverse_transform(self._scaler, data, target_scale)
