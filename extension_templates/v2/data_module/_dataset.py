@@ -46,7 +46,6 @@ class _MyDataModuleDataset(
         prediction length), produced by the data module's _create_windows.
     """
 
-    # TODO: Add and document additional configuration only if this dataset needs it.
     def __init__(
         self,
         data_module: MyDataModule,
@@ -79,5 +78,3 @@ class _MyDataModuleDataset(
         # Use the parent module's preprocessing and keep sample construction
         # consistent with the module's collate_fn and the model's forward method.
         raise NotImplementedError("Build one model input/target pair.")
-
-    # TODO: Add documented helpers for sample construction if necessary.

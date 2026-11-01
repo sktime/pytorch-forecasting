@@ -57,11 +57,11 @@ class MyMetric(MultiHorizonMetric):
     Parameters
     ----------
     parama : Any, optional
-        TODO: Describe the metric-specific option and its default.
+        Example metric-specific option.
     paramb : str, default="default"
-        TODO: Describe this option and its valid values.
+        Example string option.
     paramc : Any, optional
-        TODO: Describe any additional component or configuration.
+        Example component or additional configuration.
     **kwargs : Any
         Supported base metric options, such as reduction.
     """
@@ -120,5 +120,3 @@ class MyMetric(MultiHorizonMetric):
     #
     # DistributionLoss subclasses can additionally implement
     # map_x_to_distribution and rescale_parameters as required by their base class.
-    # TODO: When adapting a distribution loss, copy the corresponding base-class
-    # signatures and document the distribution and parameter rescaling used.

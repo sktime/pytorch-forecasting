@@ -134,5 +134,3 @@ class MyModel(BaseModel):
         # TODO: Implement the forward pass for the selected datamodule's inputs.
         # Return {"prediction": tensor} for the training loss.
         raise NotImplementedError("Implement the model forward pass.")
-
-    # TODO: Add documented helper methods for architecture-specific logic.

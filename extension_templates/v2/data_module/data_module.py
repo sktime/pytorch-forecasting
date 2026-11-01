@@ -60,7 +60,7 @@ class MyDataModule(BaseTimeSeriesDataModule):
 
     # The inherited constructor exposes the options above and records them for
     # with_data. Only add an override if the module needs extra configuration.
-    # TODO: If overriding, expose supported base options explicitly, store new
+    # When overriding, expose supported base options explicitly, store new
     # options as same-named attributes before super(), and forward the base options.
     # Hiding base options in **kwargs would prevent their capture for cloning.
 
@@ -77,10 +77,9 @@ class MyDataModule(BaseTimeSeriesDataModule):
         Returns
         -------
         Any
-            TODO: Specify the concrete metadata type and its fields, matching
-            the model's metadata argument. The base property caches this result.
+            Model initialization metadata whose type and fields match the model's
+            metadata argument. The base property caches this result.
         """
-        # TODO: Parse the data schema and derive the model-specific metadata.
         raise NotImplementedError("Derive model metadata for this data module.")
 
     # Mandatory: define preprocessing for a single series.
@@ -102,7 +101,6 @@ class MyDataModule(BaseTimeSeriesDataModule):
         -------------------
         TODO: Describe normalization, feature transformation, and caching steps.
         """
-        # TODO: Prepare one series in the form consumed by _MyDataModuleDataset.
         raise NotImplementedError("Preprocess one series.")
 
     # Mandatory: enumerate forecast windows for the selected series.
@@ -154,7 +152,4 @@ class MyDataModule(BaseTimeSeriesDataModule):
             Batched input dictionary and target tensor, or list of target tensors.
             TODO: Document input keys, tensor shapes, lengths, and padding rules.
         """
-        # TODO: Stack or pad samples into the format required by forward and loss.
         raise NotImplementedError("Collate samples into model inputs and targets.")
-
-    # TODO: Add documented helpers for any additional data-format-specific logic.

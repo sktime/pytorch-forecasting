@@ -46,11 +46,11 @@ class MyModelForecaster(BaseForecaster):
     Parameters
     ----------
     parama : Any, optional
-        TODO: Describe the first model-specific option and its default.
+        Example model-specific option.
     paramb : str, default="default"
-        TODO: Describe this model-specific option and its valid values.
+        Example string option.
     paramc : Any, optional
-        TODO: Describe any component or additional model-specific option.
+        Example component or additional model configuration.
     loss : Metric or nn.Module, optional
         Training loss. This example resolves None to MAE in get_model_params.
     logging_metrics : list[nn.Module], optional
@@ -195,5 +195,3 @@ class MyModelForecaster(BaseForecaster):
             components needed only for testing inside this method.
         """
         return [{}, {"paramb": "alternate"}]
-
-    # TODO: add model-specific configuration and test parameters.
