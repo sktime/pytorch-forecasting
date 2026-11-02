@@ -60,6 +60,165 @@ class _TslibDataset(Dataset):
     def __len__(self) -> int:
         return len(self.windows)
 
+    def _slice_window(self, idx: int) -> dict[str, Any]:
+        """Slice the raw blocks for window ``idx``. No augmentation here.
+
+        Returns
+        -------
+        dict
+            ``cont``, ``cat`` and ``target`` carry the full window along time,
+            history and future concatenated, so that transforms which move
+            along the time axis cannot break the alignment between the context
+            and the target it predicts. Keys prefixed with ``_`` are internal
+            and are not handed to augmentation transforms.
+        """
+        series_idx, start_idx, context_length, prediction_length = self.windows[idx]
+
+        processed_data = self.data_module._preprocess_data(series_idx)
+
+        end_idx = start_idx + context_length + prediction_length
+        history_indices = slice(start_idx, start_idx + context_length)
+        future_indices = slice(start_idx + context_length, end_idx)
+        window_indices = slice(start_idx, end_idx)
+
+        return {
+            "cont": processed_data["features"]["continuous"][window_indices],
+            "cat": processed_data["features"]["categorical"][window_indices],
+            "target": processed_data["target"][window_indices],
+            "ctx_len": context_length,
+            "pred_len": prediction_length,
+            "_processed": processed_data,
+            "_history_indices": history_indices,
+            "_future_indices": future_indices,
+        }
+
+    def _assemble(self, window: dict[str, Any]) -> tuple[dict[str, Any], Any]:
+        """Turn a window dict into the ``(x, y)`` pair the models consume."""
+        processed_data = window["_processed"]
+        history_indices = window["_history_indices"]
+        future_indices = window["_future_indices"]
+        context_length = window["ctx_len"]
+        prediction_length = window["pred_len"]
+
+        ctx = context_length
+        history_cont = window["cont"][:ctx]
+        history_cat = window["cat"][:ctx]
+        future_cont = window["cont"][ctx:]
+        future_cat = window["cat"][ctx:]
+
+        positions = torch.arange(processed_data["target"].shape[0])
+
+        metadata = self.data_module.metadata
+
+        known_features = set(metadata["feature_names"]["known"])
+        continuous_feature_names = metadata["feature_names"]["continuous"]
+        categorical_feature_names = metadata["feature_names"]["categorical"]
+
+        # use masking to filter out known and unknown features.
+        cont_known_mask = torch.tensor(
+            [feat in known_features for feat in continuous_feature_names],
+            dtype=torch.bool,
+        )
+
+        cat_known_mask = torch.tensor(
+            [feat in known_features for feat in categorical_feature_names],
+            dtype=torch.bool,
+        )
+
+        future_cont = (
+            future_cont[:, cont_known_mask]
+            if len(cont_known_mask) > 0
+            else torch.zeros((future_cont.shape[0], 0))
+        )  # noqa: E501
+        future_cat = (
+            future_cat[:, cat_known_mask]
+            if len(cat_known_mask) > 0
+            else torch.zeros((future_cat.shape[0], 0))
+        )  # noqa: E501
+
+        history_mask = (
+            processed_data["time_mask"][history_indices]
+            if "time_mask" in processed_data
+            else torch.ones(context_length, dtype=torch.bool)
+        )
+
+        future_mask = (
+            processed_data["time_mask"][future_indices]
+            if "time_mask" in processed_data
+            else torch.ones(prediction_length, dtype=torch.bool)
+        )
+
+        history_target = window["target"][:ctx]
+        future_target = window["target"][ctx:]
+
+        x = {
+            "history_cont": history_cont,
+            "history_cat": history_cat,
+            "future_cont": future_cont,
+            "future_cat": future_cat,
+            "history_length": torch.tensor(context_length),
+            "future_length": torch.tensor(prediction_length),
+            "history_mask": history_mask,
+            "future_mask": future_mask,
+            "groups": processed_data["group"],
+            "history_time_idx": torch.arange(context_length),
+            "future_time_idx": torch.arange(
+                context_length, context_length + prediction_length
+            ),
+            "prediction_start_idx": positions[future_indices][:1],
+            "history_target": history_target,
+            "future_target": future_target,
+            "future_target_len": torch.tensor(prediction_length),
+        }
+
+        if self.add_relative_time_idx:
+            x["history_relative_time_idx"] = torch.arange(-context_length, 0)
+            x["future_relative_time_idx"] = torch.arange(0, prediction_length)
+
+        if processed_data["static"] is not None:
+            static_features = processed_data["static"]
+            if not isinstance(static_features, torch.Tensor):
+                static_features = torch.tensor(static_features, dtype=torch.float32)
+            static_features = static_features.flatten()
+
+            static_feature_names = metadata["feature_names"]["static"]
+            static_categorical_names = set(
+                metadata["feature_names"]["static_categorical"]
+            )
+
+            static_categorical_indices = [
+                idx
+                for idx, name in enumerate(static_feature_names)
+                if name in static_categorical_names
+            ]
+            static_continuous_indices = [
+                idx
+                for idx, name in enumerate(static_feature_names)
+                if name not in static_categorical_names
+            ]
+
+            x["static_categorical_features"] = (
+                static_features[static_categorical_indices].unsqueeze(0)
+                if len(static_categorical_indices) > 0
+                else torch.zeros((1, 0), dtype=static_features.dtype)
+            )
+            x["static_continuous_features"] = (
+                static_features[static_continuous_indices].unsqueeze(0)
+                if len(static_continuous_indices) > 0
+                else torch.zeros((1, 0), dtype=static_features.dtype)
+            )
+
+        if "target_scale" in processed_data:
+            x["target_scale"] = processed_data["target_scale"]
+
+        y = future_target
+        if self.data_module.n_targets > 1:
+            y = [t.squeeze(-1) for t in torch.split(y, 1, dim=1)]
+        else:
+            y = y.squeeze(-1)
+
+        return x, y
+
     def __getitem__(self, idx: int) -> dict[str, Any]:
         """
         Get the processed dataset item at the given index.
@@ -133,136 +292,8 @@ class _TslibDataset(Dataset):
             If ``n_targets`` > 1, a list of tensors each of shape (prediction_length,)
             is returned. Otherwise, a tensor of shape (prediction_length,) is returned.
         """
-
-        series_idx, start_idx, context_length, prediction_length = self.windows[idx]
-
-        processed_data = self.data_module._preprocess_data(series_idx)
-
-        continuous_features = processed_data["features"]["continuous"]
-        categorical_features = processed_data["features"]["categorical"]
-
-        end_idx = start_idx + context_length + prediction_length
-        history_indices = slice(start_idx, start_idx + context_length)
-        future_indices = slice(start_idx + context_length, end_idx)
-
-        positions = torch.arange(processed_data["target"].shape[0])
-
-        metadata = self.data_module.metadata
-
-        history_cont = continuous_features[history_indices]
-        history_cat = categorical_features[history_indices]
-
-        future_cont = continuous_features[future_indices]
-        future_cat = categorical_features[future_indices]
-
-        known_features = set(metadata["feature_names"]["known"])
-        continuous_feature_names = metadata["feature_names"]["continuous"]
-        categorical_feature_names = metadata["feature_names"]["categorical"]
-
-        # use masking to filter out known and unknown features.
-        cont_known_mask = torch.tensor(
-            [feat in known_features for feat in continuous_feature_names],
-            dtype=torch.bool,
-        )
-
-        cat_known_mask = torch.tensor(
-            [feat in known_features for feat in categorical_feature_names],
-            dtype=torch.bool,
-        )
-
-        future_cont = (
-            future_cont[:, cont_known_mask]
-            if len(cont_known_mask) > 0
-            else torch.zeros((future_cont.shape[0], 0))
-        )  # noqa: E501
-        future_cat = (
-            future_cat[:, cat_known_mask]
-            if len(cat_known_mask) > 0
-            else torch.zeros((future_cat.shape[0], 0))
-        )  # noqa: E501
-
-        history_mask = (
-            processed_data["time_mask"][history_indices]
-            if "time_mask" in processed_data
-            else torch.ones(context_length, dtype=torch.bool)
-        )
-
-        future_mask = (
-            processed_data["time_mask"][future_indices]
-            if "time_mask" in processed_data
-            else torch.ones(prediction_length, dtype=torch.bool)
-        )
-
-        history_target = processed_data["target"][history_indices]
-        future_target = processed_data["target"][future_indices]
-
-        x = {
-            "history_cont": history_cont,
-            "history_cat": history_cat,
-            "future_cont": future_cont,
-            "future_cat": future_cat,
-            "history_length": torch.tensor(context_length),
-            "future_length": torch.tensor(prediction_length),
-            "history_mask": history_mask,
-            "future_mask": future_mask,
-            "groups": processed_data["group"],
-            "history_time_idx": torch.arange(context_length),
-            "future_time_idx": torch.arange(
-                context_length, context_length + prediction_length
-            ),
-            "prediction_start_idx": positions[future_indices][:1],
-            "history_target": history_target,
-            "future_target": future_target,
-            "future_target_len": torch.tensor(prediction_length),
-        }
-
-        if self.add_relative_time_idx:
-            x["history_relative_time_idx"] = torch.arange(-context_length, 0)
-            x["future_relative_time_idx"] = torch.arange(0, prediction_length)
-
-        if processed_data["static"] is not None:
-            static_features = processed_data["static"]
-            if not isinstance(static_features, torch.Tensor):
-                static_features = torch.tensor(static_features, dtype=torch.float32)
-            static_features = static_features.flatten()
-
-            static_feature_names = metadata["feature_names"]["static"]
-            static_categorical_names = set(
-                metadata["feature_names"]["static_categorical"]
-            )
-
-            static_categorical_indices = [
-                idx
-                for idx, name in enumerate(static_feature_names)
-                if name in static_categorical_names
-            ]
-            static_continuous_indices = [
-                idx
-                for idx, name in enumerate(static_feature_names)
-                if name not in static_categorical_names
-            ]
-
-            x["static_categorical_features"] = (
-                static_features[static_categorical_indices].unsqueeze(0)
-                if len(static_categorical_indices) > 0
-                else torch.zeros((1, 0), dtype=static_features.dtype)
-            )
-            x["static_continuous_features"] = (
-                static_features[static_continuous_indices].unsqueeze(0)
-                if len(static_continuous_indices) > 0
-                else torch.zeros((1, 0), dtype=static_features.dtype)
-            )
-
-        if "target_scale" in processed_data:
-            x["target_scale"] = processed_data["target_scale"]
-
-        y = processed_data["target"][future_indices]
-        if self.data_module.n_targets > 1:
-            y = [t.squeeze(-1) for t in torch.split(y, 1, dim=1)]
-        else:
-            y = y.squeeze(-1)
-
-        return x, y
+        window = self._slice_window(idx)
+        return self._assemble(window)
 
 
 class TslibDataModule(LightningDataModule):
