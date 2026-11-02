@@ -10,6 +10,7 @@ from pytorch_forecasting.data.augmentation import (
     BaseAugmentation,
     Jitter,
     MagnitudeWarp,
+    NeighbourIndex,
     Permutation,
     Scaling,
     SignFlip,
@@ -470,3 +471,154 @@ def test_the_transforms_are_importable_from_the_data_package():
 
     for cls in (J, S, M, F, P, T, WS, WW):
         assert issubclass(cls, Base)
+
+
+class _NeedsNeighbours(BaseAugmentation):
+    """Copies the neighbour's continuous block in. For plumbing tests."""
+
+    _tags = {"requires_neighbours": True}
+
+    def transform(self, window, rng, neighbours=None):
+        if neighbours is None:
+            raise AssertionError("the data module must pass a NeighbourIndex")
+        out = dict(window)
+        out["_saw_neighbours"] = True
+        return out
+
+
+def _make_labelled_dm(n_per_label=3, n_labels=2, **kwargs):
+    """A data module whose static categorical ``label`` is the class label."""
+    frames = []
+    series = 0
+    for label in range(n_labels):
+        for _ in range(n_per_label):
+            frames.append(
+                pd.DataFrame(
+                    {
+                        "series": series,
+                        "time_idx": range(40),
+                        "x": range(40),
+                        "y": [float(t) for t in range(40)],
+                        "label": label,
+                    }
+                )
+            )
+            series += 1
+    data = pd.concat(frames, ignore_index=True)
+
+    ts = TimeSeries(
+        data=data,
+        time="time_idx",
+        target="y",
+        group=["series"],
+        num=["x"],
+        cat=["label"],
+        static=["label"],
+    )
+    defaults = dict(
+        time_series_dataset=ts,
+        context_length=8,
+        prediction_length=4,
+        batch_size=4,
+    )
+    defaults.update(kwargs)
+    return TslibDataModule(**defaults)
+
+
+def test_missing_augmentation_label_is_an_error():
+    """A guided transform without a label column cannot work; say so early."""
+    dm = _make_labelled_dm(augmentation=_NeedsNeighbours())
+
+    with pytest.raises(ValueError, match="augmentation_label"):
+        dm.setup(stage="fit")
+
+
+def test_unknown_augmentation_label_names_the_column():
+    dm = _make_labelled_dm(
+        augmentation=_NeedsNeighbours(), augmentation_label="not_a_column"
+    )
+
+    with pytest.raises(ValueError, match="not_a_column"):
+        dm.setup(stage="fit")
+
+
+def test_neighbour_index_is_built_when_a_transform_needs_it():
+    # n_per_label=5: with the default 0.7/0.15/0.15 split and 2 labels, the
+    # worst-case random draw still leaves >= 2 series of each label in
+    # training (train_size=7, so at most 5 of one label plus 2 of the
+    # other), so this holds for every permutation instead of by luck.
+    dm = _make_labelled_dm(
+        n_per_label=5, augmentation=_NeedsNeighbours(), augmentation_label="label"
+    )
+    dm.setup(stage="fit")
+
+    assert dm.train_dataset.neighbours is not None
+
+
+def test_no_neighbour_index_when_nothing_needs_it():
+    """val/test and the per-sample-only case must pay nothing."""
+    dm = _make_labelled_dm(augmentation=Jitter(), augmentation_label="label")
+    dm.setup(stage="fit")
+
+    assert dm.train_dataset.neighbours is None
+    assert dm.val_dataset.neighbours is None
+
+
+def test_neighbour_comes_from_a_different_series():
+    """thuml's "sample" maps to our series, not our window, so other windows
+    of the same series are not neighbours."""
+    # n_per_label=5: see test_neighbour_index_is_built_when_a_transform_needs_it
+    # for why this makes the "at least 2 series per label in training"
+    # precondition hold for every permutation of the random split.
+    dm = _make_labelled_dm(
+        n_per_label=5, augmentation=_NeedsNeighbours(), augmentation_label="label"
+    )
+    dm.setup(stage="fit")
+    index = dm.train_dataset.neighbours
+    rng = torch.Generator().manual_seed(0)
+
+    for window_idx in range(min(20, len(dm.train_dataset))):
+        own_series = index.series_of_window[window_idx]
+        neighbour_idx = index.sample_index(window_idx, rng)
+        assert index.series_of_window[neighbour_idx] != own_series
+        assert index.labels[neighbour_idx] == index.labels[window_idx]
+
+
+def test_other_label_neighbour_has_a_different_label():
+    """DiscriminativeGuidedWarp needs negative examples, not just positive."""
+    # n_per_label=5: see test_neighbour_index_is_built_when_a_transform_needs_it
+    # for why this makes the "at least 2 series per label in training"
+    # precondition hold for every permutation of the random split.
+    dm = _make_labelled_dm(
+        n_per_label=5, augmentation=_NeedsNeighbours(), augmentation_label="label"
+    )
+    dm.setup(stage="fit")
+    index = dm.train_dataset.neighbours
+    rng = torch.Generator().manual_seed(0)
+
+    for window_idx in range(min(20, len(dm.train_dataset))):
+        other = index.sample_other_label_index(window_idx, rng)
+        assert index.labels[other] != index.labels[window_idx]
+
+
+def test_a_label_covering_one_series_raises_at_build_time():
+    """thuml degrades silently here; we refuse to start instead."""
+    dm = _make_labelled_dm(
+        n_per_label=1,
+        n_labels=2,
+        augmentation=_NeedsNeighbours(),
+        augmentation_label="label",
+        train_val_test_split=(1.0, 0.0, 0.0),
+    )
+
+    with pytest.raises(ValueError, match="only one series"):
+        dm.setup(stage="fit")
+
+
+def test_as_array_concatenates_cont_and_target_without_cat():
+    """Categorical codes carry no distance, so they stay out of the DTW input."""
+    window = _window(ctx=6, pred=2, n_cont=2, n_cat=1, n_targets=1)
+
+    array = NeighbourIndex.as_array(window)
+
+    assert array.shape == (8, 3)

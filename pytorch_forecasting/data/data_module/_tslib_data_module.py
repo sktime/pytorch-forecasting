@@ -116,6 +116,7 @@ class _TslibDataset(Dataset):
             "_processed": processed_data,
             "_history_indices": history_indices,
             "_future_indices": future_indices,
+            "_series_idx": series_idx,
         }
 
     def _augment(self, window: dict[str, Any]) -> dict[str, Any]:
@@ -804,6 +805,51 @@ class TslibDataModule(LightningDataModule):
 
         return windows
 
+    def _build_neighbour_index(self, dataset, windows):
+        """Build the same-label pool the guided augmentations need.
+
+        Returns ``None`` when no configured transform declares
+        ``requires_neighbours``, so the per-sample-only case and the
+        validation, test and prediction splits pay nothing.
+        """
+        if not self._augmentation:
+            return None
+        if not any(
+            t.get_class_tags()["requires_neighbours"] for t in self._augmentation
+        ):
+            return None
+
+        from pytorch_forecasting.data.augmentation import NeighbourIndex
+
+        static_names = self.metadata["feature_names"]["static_categorical"]
+        if self.augmentation_label is None:
+            raise ValueError(
+                "augmentation_label is required when an augmentation declares "
+                "requires_neighbours. Pass the name of the static categorical "
+                f"column holding the class label; available: {static_names}."
+            )
+        if self.augmentation_label not in static_names:
+            raise ValueError(
+                f"augmentation_label={self.augmentation_label!r} is not a "
+                f"static categorical column; available: {static_names}."
+            )
+
+        all_static = self.metadata["feature_names"]["static"]
+        label_pos = all_static.index(self.augmentation_label)
+
+        labels = []
+        series_of_window = []
+        for series_idx, _, _, _ in windows:
+            static = self._preprocess_data(series_idx)["static"]
+            labels.append(int(static[label_pos].item()))
+            series_of_window.append(int(series_idx))
+
+        return NeighbourIndex(
+            dataset=dataset,
+            labels=torch.tensor(labels),
+            series_of_window=series_of_window,
+        )
+
     def setup(self, stage: str | None = None) -> None:
         """
         Setup the data module by preparing the datasets for training,
@@ -863,6 +909,9 @@ class TslibDataModule(LightningDataModule):
                     windows=self._train_windows,
                     add_relative_time_idx=self.add_relative_time_idx,
                     augmentation=self._augmentation,
+                )
+                self.train_dataset.neighbours = self._build_neighbour_index(
+                    self.train_dataset, self._train_windows
                 )
 
                 self.val_dataset = _TslibDataset(

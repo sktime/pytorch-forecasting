@@ -384,3 +384,100 @@ class WindowWarp(BaseAugmentation):
         ).view(-1)
 
         return self.resample_positions(window, src_pos)
+
+
+class NeighbourIndex:
+    """A pool of same-label windows, for the label guided transforms.
+
+    The guided transforms warp a window towards another window of the same
+    class, so they need to see windows other than their own. ``transform``'s
+    signature only carries the current window, so the pool is handed in
+    separately, and only to transforms declaring ``requires_neighbours``.
+
+    Lookups go through ``dataset._slice_window``, never ``__getitem__``: a
+    neighbour must be a raw window, or fetching one would recurse back into
+    augmentation and need a re-entrancy flag to stop.
+
+    Parameters
+    ----------
+    dataset : _TslibDataset
+        the dataset the window indices refer to
+    labels : torch.Tensor
+        class label per window, shape ``(n_windows,)``
+    series_of_window : list of int
+        the series each window was cut from; a neighbour must come from a
+        different series, because ``thuml``'s notion of a sample maps to our
+        series rather than our window
+
+    Raises
+    ------
+    ValueError
+        if any label covers only one series, which would leave windows of that
+        label with an empty pool
+    """
+
+    def __init__(self, dataset, labels: torch.Tensor, series_of_window: list):
+        self.dataset = dataset
+        self.labels = labels
+        self.series_of_window = series_of_window
+
+        self._by_label = {}
+        for window_idx, label in enumerate(labels.tolist()):
+            self._by_label.setdefault(label, []).append(window_idx)
+
+        for label, members in self._by_label.items():
+            series = {series_of_window[i] for i in members}
+            if len(series) < 2:
+                raise ValueError(
+                    f"label {label!r} covers only one series, so windows with "
+                    "that label have no same-label neighbour from another "
+                    "series. Guided augmentations need at least two series per "
+                    "label in the training split."
+                )
+
+    def sample_index(self, window_idx: int, rng: torch.Generator) -> int:
+        """Index of a same-label window from a different series."""
+        label = int(self.labels[window_idx].item())
+        own_series = self.series_of_window[window_idx]
+        candidates = [
+            i for i in self._by_label[label] if self.series_of_window[i] != own_series
+        ]
+        pick = int(torch.randint(0, len(candidates), (1,), generator=rng).item())
+        return candidates[pick]
+
+    def sample(self, window_idx: int, rng: torch.Generator) -> dict:
+        """A raw, unaugmented same-label window from a different series."""
+        return self.dataset._slice_window(self.sample_index(window_idx, rng))
+
+    def sample_other_label_index(self, window_idx: int, rng: torch.Generator) -> int:
+        """Index of a window carrying a different label.
+
+        ``DiscriminativeGuidedWarp`` picks the prototype that is closest to the
+        same class and furthest from other classes, so it needs negative
+        examples as well as positive ones.
+        """
+        label = int(self.labels[window_idx].item())
+        candidates = [
+            i
+            for lab, members in self._by_label.items()
+            if lab != label
+            for i in members
+        ]
+        if not candidates:
+            raise ValueError(
+                "the training split carries a single label, so there are no "
+                "differently-labelled windows. DiscriminativeGuidedWarp needs "
+                "at least two labels."
+            )
+        pick = int(torch.randint(0, len(candidates), (1,), generator=rng).item())
+        return candidates[pick]
+
+    @staticmethod
+    def as_array(window: dict) -> torch.Tensor:
+        """Flatten a window into the single array DTW needs.
+
+        Continuous features and the target, concatenated along the feature
+        axis. The categorical block is left out: integer codes have no
+        ordering, so a euclidean distance over them is meaningless.
+        """
+        return torch.cat([window["cont"], window["target"]], dim=1)
