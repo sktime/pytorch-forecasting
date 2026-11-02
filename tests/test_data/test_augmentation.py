@@ -10,8 +10,12 @@ from pytorch_forecasting.data.augmentation import (
     BaseAugmentation,
     Jitter,
     MagnitudeWarp,
+    Permutation,
     Scaling,
     SignFlip,
+    TimeWarp,
+    WindowSlice,
+    WindowWarp,
 )
 from pytorch_forecasting.data.data_module._tslib_data_module import TslibDataModule
 from pytorch_forecasting.data.timeseries._timeseries_v2 import TimeSeries
@@ -325,3 +329,125 @@ def test_sign_flip_does_not_permute_feature_columns():
     out = SignFlip().transform(window, rng)
 
     assert torch.equal(out["cont"].abs(), window["cont"].abs())
+
+
+TIME_AXIS = [Permutation(), TimeWarp(), WindowSlice(), WindowWarp()]
+
+
+@pytest.mark.parametrize("transform", TIME_AXIS, ids=lambda t: type(t).__name__)
+def test_time_axis_transform_declares_its_tag(transform):
+    assert transform.get_class_tags()["touches_time_axis"] is True
+
+
+@pytest.mark.parametrize("transform", TIME_AXIS, ids=lambda t: type(t).__name__)
+def test_time_axis_transform_changes_the_continuous_block(transform):
+    """A transform that silently no-ops would pass every other test here.
+
+    ``WindowSlice`` and ``WindowWarp`` return the window untouched when it is
+    too short for their span, so this uses a window long enough for all four.
+    """
+    window = _window(ctx=16, pred=8)
+    rng = torch.Generator().manual_seed(0)
+
+    out = transform.transform(window, rng)
+
+    assert not torch.equal(out["cont"], window["cont"])
+
+
+@pytest.mark.parametrize("transform", TIME_AXIS, ids=lambda t: type(t).__name__)
+def test_time_axis_transform_keeps_every_shape(transform):
+    """Even WindowSlice, which samples a shorter span, interpolates back."""
+    window = _window(ctx=16, pred=8)
+    rng = torch.Generator().manual_seed(0)
+
+    out = transform.transform(window, rng)
+
+    for key in ("cont", "cat", "target"):
+        assert out[key].shape == window[key].shape, key
+
+
+@pytest.mark.parametrize("transform", TIME_AXIS, ids=lambda t: type(t).__name__)
+def test_time_axis_transform_keeps_cat_aligned_with_cont(transform):
+    """The whole point of resample_positions.
+
+    In the fixture ``cont[t, 0] == t * 10`` and ``cat[t, 0] == t``, so after any
+    resampling the two must still agree about which timestep each row is. A
+    transform that warped only the continuous block would pass the shape test
+    and fail this one.
+    """
+    window = _window(ctx=16, pred=8, n_cont=1, n_cat=1)
+    rng = torch.Generator().manual_seed(0)
+
+    out = transform.transform(window, rng)
+
+    implied_step = out["cont"][:, 0] / 10.0
+    assert torch.allclose(implied_step, out["cat"][:, 0].to(torch.float32), atol=0.5)
+
+
+@pytest.mark.parametrize("transform", TIME_AXIS, ids=lambda t: type(t).__name__)
+def test_time_axis_transform_does_not_mutate_the_input(transform):
+    window = _window(ctx=16, pred=8)
+    before = {k: window[k].clone() for k in ("cont", "cat", "target")}
+    rng = torch.Generator().manual_seed(0)
+
+    transform.transform(window, rng)
+
+    for key, value in before.items():
+        assert torch.equal(window[key], value), key
+
+
+@pytest.mark.parametrize("transform", TIME_AXIS, ids=lambda t: type(t).__name__)
+def test_time_axis_transform_is_reproducible_for_one_seed(transform):
+    window = _window(ctx=16, pred=8)
+
+    first = transform.transform(window, torch.Generator().manual_seed(7))
+    second = transform.transform(window, torch.Generator().manual_seed(7))
+
+    assert torch.equal(first["cont"], second["cont"])
+
+
+def test_permutation_keeps_the_multiset_of_steps():
+    """Segments are reordered, so every original step appears exactly once."""
+    window = _window(ctx=16, pred=8, n_cat=1)
+    rng = torch.Generator().manual_seed(3)
+
+    out = Permutation().transform(window, rng)
+
+    assert sorted(out["cat"][:, 0].tolist()) == sorted(window["cat"][:, 0].tolist())
+
+
+def test_permutation_actually_reorders():
+    window = _window(ctx=16, pred=8, n_cat=1)
+    rng = torch.Generator().manual_seed(3)
+
+    out = Permutation().transform(window, rng)
+
+    assert not torch.equal(out["cat"], window["cat"])
+
+
+def test_time_warp_shares_one_warp_across_channels():
+    """All channels must map to the same timestep, or cross-feature alignment
+    at a given time would be destroyed.
+    """
+    window = _window(ctx=16, pred=8, n_cont=3)
+    rng = torch.Generator().manual_seed(5)
+
+    out = TimeWarp().transform(window, rng)
+
+    # cont[t, c] == t * 10 + c, so subtracting the channel offset must leave
+    # the same implied timestep in every channel.
+    offsets = torch.arange(3, dtype=torch.float32)
+    implied = (out["cont"] - offsets) / 10.0
+    for channel in range(1, 3):
+        assert torch.allclose(implied[:, 0], implied[:, channel], atol=1e-3)
+
+
+def test_window_slice_samples_a_sub_span():
+    """The output spans less than the full window, stretched back to length."""
+    window = _window(ctx=16, pred=8, n_cat=1)
+    rng = torch.Generator().manual_seed(0)
+
+    out = WindowSlice(reduce_ratio=0.5).transform(window, rng)
+
+    covered = out["cat"][:, 0].max() - out["cat"][:, 0].min()
+    assert covered < 23

@@ -231,3 +231,153 @@ class SignFlip(BaseAugmentation):
             )
             out[key] = block * (draw * 2 - 1)
         return out
+
+
+class Permutation(BaseAugmentation):
+    """Cut the window into equal segments and reorder them.
+
+    ``thuml`` draws the segment count from ``1 .. max_segments - 1`` and
+    returns the window untouched when it draws 1, so the transform silently
+    does nothing for some fraction of accesses. Here the count is drawn from
+    ``2 .. max_segments``, so every access reorders. A transform that
+    sometimes no-ops is both weaker as a regulariser and untestable: a test
+    asserting the data changed would fail intermittently.
+
+    Parameters
+    ----------
+    max_segments : int, default=5
+        Upper bound on the number of segments. The actual count is drawn
+        uniformly from ``2 .. max_segments``.
+    """
+
+    _tags = {"touches_time_axis": True}
+
+    def __init__(self, max_segments: int = 5):
+        self.max_segments = max_segments
+        super().__init__()
+
+    def transform(self, window, rng, neighbours=None):
+        n_steps = window["cont"].shape[0]
+        n_segments = int(
+            torch.randint(2, self.max_segments + 1, (1,), generator=rng).item()
+        )
+        n_segments = min(n_segments, n_steps)
+
+        positions = torch.arange(n_steps)
+        segments = list(torch.chunk(positions, n_segments))
+        order = torch.randperm(len(segments), generator=rng)
+        src_pos = torch.cat([segments[i] for i in order]).to(torch.float32)
+
+        return self.resample_positions(window, src_pos)
+
+
+class TimeWarp(BaseAugmentation):
+    """Warp the time axis with a smooth random curve.
+
+    The warp is **shared across channels**, unlike ``thuml``, which draws one
+    per channel. Warping channels independently would mean that row ``t`` of
+    the output mixes different timesteps of different features, destroying the
+    cross-feature alignment a forecasting model relies on. Sharing it is also
+    what lets the categorical codes follow the same mapping.
+
+    Parameters
+    ----------
+    sigma : float, default=0.2
+        Standard deviation of the knot values around 1.0.
+    knot : int, default=4
+        Number of interior knots of the spline.
+    """
+
+    _tags = {"touches_time_axis": True}
+
+    def __init__(self, sigma: float = 0.2, knot: int = 4):
+        self.sigma = sigma
+        self.knot = knot
+        super().__init__()
+
+    def transform(self, window, rng, neighbours=None):
+        n_steps = window["cont"].shape[0]
+
+        # one positive curve, shared by every block and channel
+        curve = _random_spline_curve(n_steps, 1, self.sigma, self.knot, rng)
+        curve = curve[:, 0].clamp(min=1e-3)
+
+        walk = torch.cumsum(curve, dim=0)
+        src_pos = (walk - walk[0]) / (walk[-1] - walk[0]) * (n_steps - 1)
+
+        return self.resample_positions(window, src_pos)
+
+
+class WindowSlice(BaseAugmentation):
+    """Slice a random sub-span and stretch it back to the full length.
+
+    Parameters
+    ----------
+    reduce_ratio : float, default=0.9
+        Fraction of the window the slice covers.
+    """
+
+    _tags = {"touches_time_axis": True}
+
+    def __init__(self, reduce_ratio: float = 0.9):
+        self.reduce_ratio = reduce_ratio
+        super().__init__()
+
+    def transform(self, window, rng, neighbours=None):
+        n_steps = window["cont"].shape[0]
+        span = max(2, int(round(n_steps * self.reduce_ratio)))
+        if span >= n_steps:
+            return dict(window)
+
+        start = int(torch.randint(0, n_steps - span + 1, (1,), generator=rng).item())
+        src_pos = torch.linspace(float(start), float(start + span - 1), n_steps)
+
+        return self.resample_positions(window, src_pos)
+
+
+class WindowWarp(BaseAugmentation):
+    """Speed up or slow down one random window, keeping the edges in place.
+
+    Parameters
+    ----------
+    window_ratio : float, default=0.1
+        Fraction of the series the warped window covers.
+    """
+
+    _tags = {"touches_time_axis": True}
+
+    def __init__(self, window_ratio: float = 0.1, scales=(0.5, 2.0)):
+        self.window_ratio = window_ratio
+        self.scales = scales
+        super().__init__()
+
+    def transform(self, window, rng, neighbours=None):
+        n_steps = window["cont"].shape[0]
+        warp_size = max(2, int(round(n_steps * self.window_ratio)))
+        if warp_size >= n_steps - 2:
+            return dict(window)
+
+        start = int(
+            torch.randint(1, n_steps - warp_size - 1, (1,), generator=rng).item()
+        )
+        end = start + warp_size
+
+        pick = int(torch.randint(0, len(self.scales), (1,), generator=rng).item())
+        scale = float(self.scales[pick])
+
+        warped = torch.linspace(
+            float(start), float(end - 1), max(2, int(round(warp_size * scale)))
+        )
+        src_pos = torch.cat(
+            [
+                torch.arange(0, start, dtype=torch.float32),
+                warped,
+                torch.arange(end, n_steps, dtype=torch.float32),
+            ]
+        )
+        # stretch the concatenated path back onto the original step count
+        src_pos = torch.nn.functional.interpolate(
+            src_pos.view(1, 1, -1), size=n_steps, mode="linear", align_corners=True
+        ).view(-1)
+
+        return self.resample_positions(window, src_pos)
