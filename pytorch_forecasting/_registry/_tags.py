@@ -825,7 +825,7 @@ def check_tag_is_valid(tag_name, tag_value):
 
     if isinstance(tag_type, str):
         # no tag in the register declares a bare "list"; adding one means
-        # adding its arm here and a case in test_check_tag_is_valid_rejects
+        # adding its arm here as well
         expected = {"bool": bool, "int": int, "str": str}[tag_type]
         # bool is a subclass of int, so an int tag must not accept True
         if tag_type == "int" and isinstance(tag_value, bool):
@@ -848,7 +848,7 @@ def check_tag_is_valid(tag_name, tag_value):
         return
 
     # the only remaining kind is "list"; the register is checked for shape by
-    # test_every_tag_type_is_supported, so there is no unreachable arm here
+    # test_tag_register_type, so there is no unreachable arm here
     if allowed == "str":
         values = [tag_value] if isinstance(tag_value, str) else tag_value
         if not isinstance(values, list) or not all(isinstance(x, str) for x in values):
