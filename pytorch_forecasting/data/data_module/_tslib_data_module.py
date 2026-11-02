@@ -43,6 +43,12 @@ class _TslibDataset(Dataset):
             - prediction_length: Length of the prediction/decoder window
     add_relative_time_idx: bool
         Whether to add relative time index to the dataset.
+    augmentation: list or None
+        Transforms to apply to each window on every access, in order. ``None``
+        means no augmentation.
+    neighbours:
+        Pool of same-label windows for transforms declaring
+        ``requires_neighbours``. ``None`` otherwise.
     """
 
     def __init__(
@@ -51,14 +57,34 @@ class _TslibDataset(Dataset):
         data_module: "TslibDataModule",
         windows: list[tuple[int, int, int, int]],
         add_relative_time_idx: bool = False,
+        augmentation: list | None = None,
+        neighbours=None,
     ):
         self.dataset = dataset
         self.data_module = data_module
         self.windows = windows
         self.add_relative_time_idx = add_relative_time_idx
+        self.augmentation = augmentation
+        self.neighbours = neighbours
+        self._rng = None
 
     def __len__(self) -> int:
         return len(self.windows)
+
+    @property
+    def rng(self) -> torch.Generator:
+        """Generator for augmentation, seeded from the current worker's seed.
+
+        Created lazily rather than in ``__init__`` because dataloader workers
+        are forked after the dataset is built: ``torch.initial_seed()`` only
+        returns the per-worker seed once we are inside the worker. Creating it
+        eagerly would give every worker the same noise, which is the bug
+        ``thuml`` has by using ``numpy.random`` directly.
+        """
+        if self._rng is None:
+            self._rng = torch.Generator()
+            self._rng.manual_seed(torch.initial_seed() % (2**63 - 1))
+        return self._rng
 
     def _slice_window(self, idx: int) -> dict[str, Any]:
         """Slice the raw blocks for window ``idx``. No augmentation here.
@@ -91,6 +117,31 @@ class _TslibDataset(Dataset):
             "_history_indices": history_indices,
             "_future_indices": future_indices,
         }
+
+    def _augment(self, window: dict[str, Any]) -> dict[str, Any]:
+        """Apply the configured transforms to ``window``, in order.
+
+        Transforms see only the public blocks, so they cannot reach the
+        internal keys ``_assemble`` relies on. Their output is merged back
+        rather than replacing the dict wholesale.
+        """
+        public = {
+            "cont": window["cont"],
+            "cat": window["cat"],
+            "target": window["target"],
+            "ctx_len": window["ctx_len"],
+            "pred_len": window["pred_len"],
+        }
+
+        for transform in self.augmentation:
+            tags = transform.get_class_tags()
+            neighbours = self.neighbours if tags["requires_neighbours"] else None
+            public = transform.transform(public, self.rng, neighbours)
+
+        out = dict(window)
+        for key in ("cont", "cat", "target"):
+            out[key] = public[key]
+        return out
 
     def _assemble(self, window: dict[str, Any]) -> tuple[dict[str, Any], Any]:
         """Turn a window dict into the ``(x, y)`` pair the models consume."""
@@ -293,6 +344,8 @@ class _TslibDataset(Dataset):
             is returned. Otherwise, a tensor of shape (prediction_length,) is returned.
         """
         window = self._slice_window(idx)
+        if self.augmentation:
+            window = self._augment(window)
         return self._assemble(window)
 
 
@@ -347,6 +400,15 @@ class TslibDataModule(LightningDataModule):
         Proportions for train, validation, and test dataset splits.
     collate_fn : Optional[callable], default=None
         Custom collate function for the dataloader.
+    augmentation : BaseAugmentation or list of BaseAugmentation, optional
+        Transforms perturbing each training window on every access. A list is
+        applied in order. Applied to the training split only, and only after
+        scaling, so that the default ``sigma`` values are in units of a
+        standard deviation. Default is None, meaning no augmentation.
+    augmentation_label : str, optional
+        Name of the static categorical column holding the class label, required
+        only by augmentations declaring ``requires_neighbours``. Default is
+        None.
     """  # noqa: E501
 
     def __init__(
@@ -372,6 +434,8 @@ class TslibDataModule(LightningDataModule):
         num_workers: int = 0,
         train_val_test_split: tuple[float, float, float] = (0.7, 0.15, 0.15),
         collate_fn: Callable | None = None,
+        augmentation=None,
+        augmentation_label: str | None = None,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -388,6 +452,13 @@ class TslibDataModule(LightningDataModule):
         self.collate_fn = (
             collate_fn if collate_fn is not None else self.__class__.collate_fn
         )  # noqa: E501
+        self.augmentation_label = augmentation_label
+        if augmentation is None:
+            self._augmentation = None
+        elif isinstance(augmentation, (list, tuple)):
+            self._augmentation = list(augmentation)
+        else:
+            self._augmentation = [augmentation]
         self.kwargs = kwargs
 
         warnings.warn(
@@ -791,6 +862,7 @@ class TslibDataModule(LightningDataModule):
                     data_module=self,
                     windows=self._train_windows,
                     add_relative_time_idx=self.add_relative_time_idx,
+                    augmentation=self._augmentation,
                 )
 
                 self.val_dataset = _TslibDataset(
