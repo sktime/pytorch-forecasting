@@ -133,3 +133,101 @@ def _random_spline_curve(
     channels = [CubicSpline(knot_x, knot_y[:, c])(steps) for c in range(n_channels)]
     curve = np.stack(channels, axis=1)
     return torch.tensor(curve, dtype=torch.float32)
+
+
+class Jitter(BaseAugmentation):
+    """Add gaussian noise to every value.
+
+    Parameters
+    ----------
+    sigma : float, default=0.03
+        Standard deviation of the noise. Interpreted in units of a standard
+        deviation of the scaled series, because augmentation runs after
+        scaling; on raw values this default would mean nothing comparable.
+    """
+
+    def __init__(self, sigma: float = 0.03):
+        self.sigma = sigma
+        super().__init__()
+
+    def transform(self, window, rng, neighbours=None):
+        out = dict(window)
+        for key in ("cont", "target"):
+            block = window[key]
+            noise = torch.randn(block.shape, generator=rng) * self.sigma
+            out[key] = block + noise
+        return out
+
+
+class Scaling(BaseAugmentation):
+    """Multiply each channel by its own random factor, constant over time.
+
+    Parameters
+    ----------
+    sigma : float, default=0.1
+        Standard deviation of the factor around 1.0.
+    """
+
+    def __init__(self, sigma: float = 0.1):
+        self.sigma = sigma
+        super().__init__()
+
+    def transform(self, window, rng, neighbours=None):
+        out = dict(window)
+        for key in ("cont", "target"):
+            block = window[key]
+            n_channels = block.shape[1]
+            factor = 1.0 + self.sigma * torch.randn((1, n_channels), generator=rng)
+            out[key] = block * factor
+        return out
+
+
+class MagnitudeWarp(BaseAugmentation):
+    """Warp amplitude with a smooth random curve along time.
+
+    Parameters
+    ----------
+    sigma : float, default=0.2
+        Standard deviation of the knot values around 1.0.
+    knot : int, default=4
+        Number of interior knots of the spline.
+    """
+
+    def __init__(self, sigma: float = 0.2, knot: int = 4):
+        self.sigma = sigma
+        self.knot = knot
+        super().__init__()
+
+    def transform(self, window, rng, neighbours=None):
+        out = dict(window)
+        n_steps = window["cont"].shape[0]
+        for key in ("cont", "target"):
+            block = window[key]
+            curve = _random_spline_curve(
+                n_steps, block.shape[1], self.sigma, self.knot, rng
+            )
+            out[key] = block * curve
+        return out
+
+
+class SignFlip(BaseAugmentation):
+    """Flip the sign of a random subset of channels.
+
+    This is ``thuml``'s ``rotation`` with the feature permutation removed. That
+    permutation is sound for classification, where channels are exchangeable,
+    but not here: the data module's ``cont_known_mask`` selects known features
+    by column position, so permuting columns would take "known future" values
+    from the wrong feature without raising. The class is named for what it
+    does rather than for the upstream function, so the difference is visible at
+    the call site.
+    """
+
+    def transform(self, window, rng, neighbours=None):
+        out = dict(window)
+        for key in ("cont", "target"):
+            block = window[key]
+            draw = torch.randint(
+                0, 2, (1, block.shape[1]), generator=rng, dtype=block.dtype
+            )
+            out[key] = block * (draw * 2 - 1)
+        return out

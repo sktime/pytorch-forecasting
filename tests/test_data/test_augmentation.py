@@ -6,7 +6,13 @@ import pandas as pd
 import pytest
 import torch
 
-from pytorch_forecasting.data.augmentation import BaseAugmentation
+from pytorch_forecasting.data.augmentation import (
+    BaseAugmentation,
+    Jitter,
+    MagnitudeWarp,
+    Scaling,
+    SignFlip,
+)
 from pytorch_forecasting.data.data_module._tslib_data_module import TslibDataModule
 from pytorch_forecasting.data.timeseries._timeseries_v2 import TimeSeries
 
@@ -224,3 +230,98 @@ def test_the_same_index_is_resampled_on_every_access():
     second, _ = dm.train_dataset[0]
 
     assert not torch.equal(first["history_cont"], second["history_cont"])
+
+
+AMPLITUDE = [Jitter(), Scaling(), MagnitudeWarp(), SignFlip()]
+
+
+@pytest.mark.parametrize("transform", AMPLITUDE, ids=lambda t: type(t).__name__)
+def test_amplitude_transform_changes_the_continuous_block(transform):
+    window = _window()
+    rng = torch.Generator().manual_seed(0)
+
+    out = transform.transform(window, rng)
+
+    assert not torch.equal(out["cont"], window["cont"])
+
+
+@pytest.mark.parametrize("transform", AMPLITUDE, ids=lambda t: type(t).__name__)
+def test_amplitude_transform_keeps_every_shape(transform):
+    window = _window()
+    rng = torch.Generator().manual_seed(0)
+
+    out = transform.transform(window, rng)
+
+    for key in ("cont", "cat", "target"):
+        assert out[key].shape == window[key].shape, key
+
+
+@pytest.mark.parametrize("transform", AMPLITUDE, ids=lambda t: type(t).__name__)
+def test_amplitude_transform_leaves_the_categorical_block_alone(transform):
+    """Perturbing an integer code would produce a code that means nothing."""
+    window = _window()
+    rng = torch.Generator().manual_seed(0)
+
+    out = transform.transform(window, rng)
+
+    assert torch.equal(out["cat"], window["cat"])
+
+
+@pytest.mark.parametrize("transform", AMPLITUDE, ids=lambda t: type(t).__name__)
+def test_amplitude_transform_does_not_mutate_the_input(transform):
+    window = _window()
+    before = {k: window[k].clone() for k in ("cont", "cat", "target")}
+    rng = torch.Generator().manual_seed(0)
+
+    transform.transform(window, rng)
+
+    for key, value in before.items():
+        assert torch.equal(window[key], value), key
+
+
+@pytest.mark.parametrize("transform", AMPLITUDE, ids=lambda t: type(t).__name__)
+def test_amplitude_transform_is_reproducible_for_one_seed(transform):
+    window = _window()
+
+    first = transform.transform(window, torch.Generator().manual_seed(7))
+    second = transform.transform(window, torch.Generator().manual_seed(7))
+
+    assert torch.equal(first["cont"], second["cont"])
+
+
+@pytest.mark.parametrize("transform", AMPLITUDE, ids=lambda t: type(t).__name__)
+def test_amplitude_transform_differs_across_seeds(transform):
+    window = _window()
+
+    first = transform.transform(window, torch.Generator().manual_seed(1))
+    second = transform.transform(window, torch.Generator().manual_seed(2))
+
+    assert not torch.equal(first["cont"], second["cont"])
+
+
+def test_scaling_multiplies_each_channel_by_one_factor():
+    """A per-channel factor means the ratio is constant down each column."""
+    window = _window(ctx=6, pred=2, n_cont=2)
+    rng = torch.Generator().manual_seed(0)
+
+    out = Scaling().transform(window, rng)
+
+    ratio = out["cont"] / window["cont"].clamp(min=1e-6)
+    for channel in range(window["cont"].shape[1]):
+        column = ratio[1:, channel]
+        assert torch.allclose(column, column[0].expand_as(column), atol=1e-4)
+
+
+def test_sign_flip_does_not_permute_feature_columns():
+    """Unlike thuml's rotation, columns keep their identity.
+
+    ``cont_known_mask`` in the data module selects known features by column
+    position, so permuting columns would feed "known future" values from the
+    wrong feature, silently.
+    """
+    window = _window(ctx=6, pred=2, n_cont=2)
+    rng = torch.Generator().manual_seed(0)
+
+    out = SignFlip().transform(window, rng)
+
+    assert torch.equal(out["cont"].abs(), window["cont"].abs())
