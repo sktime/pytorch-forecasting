@@ -451,3 +451,22 @@ def test_window_slice_samples_a_sub_span():
 
     covered = out["cat"][:, 0].max() - out["cat"][:, 0].min()
     assert covered < 23
+
+
+def test_the_transforms_are_importable_from_the_data_package():
+    """Users write TslibDataModule(augmentation=Jitter()), so the short path
+    has to work."""
+    from pytorch_forecasting.data import (
+        BaseAugmentation as Base,
+        Jitter as J,
+        MagnitudeWarp as M,
+        Permutation as P,
+        Scaling as S,
+        SignFlip as F,
+        TimeWarp as T,
+        WindowSlice as WS,
+        WindowWarp as WW,
+    )
+
+    for cls in (J, S, M, F, P, T, WS, WW):
+        assert issubclass(cls, Base)

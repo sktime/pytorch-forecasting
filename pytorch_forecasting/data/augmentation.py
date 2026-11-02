@@ -342,6 +342,9 @@ class WindowWarp(BaseAugmentation):
     ----------
     window_ratio : float, default=0.1
         Fraction of the series the warped window covers.
+    scales : tuple of float, default=(0.5, 2.0)
+        Candidate speed factors; one is chosen at random to stretch or
+        compress the warped window.
     """
 
     _tags = {"touches_time_axis": True}

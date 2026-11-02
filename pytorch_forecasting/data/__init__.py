@@ -6,6 +6,17 @@ utilities, and batching tools required to transform raw time series data
 into model-ready PyTorch datasets.
 """
 
+from pytorch_forecasting.data.augmentation import (
+    BaseAugmentation,
+    Jitter,
+    MagnitudeWarp,
+    Permutation,
+    Scaling,
+    SignFlip,
+    TimeWarp,
+    WindowSlice,
+    WindowWarp,
+)
 from pytorch_forecasting.data.encoders import (
     EncoderNormalizer,
     GroupNormalizer,
@@ -25,4 +36,13 @@ __all__ = [
     "EncoderNormalizer",
     "TimeSynchronizedBatchSampler",
     "MultiNormalizer",
+    "BaseAugmentation",
+    "Jitter",
+    "MagnitudeWarp",
+    "Permutation",
+    "Scaling",
+    "SignFlip",
+    "TimeWarp",
+    "WindowSlice",
+    "WindowWarp",
 ]
