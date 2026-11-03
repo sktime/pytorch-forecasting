@@ -60,12 +60,18 @@ See the detailed API documentation for the V2 data classes below:
    :toctree: api
 
    data.augmentation.BaseAugmentation
+   data.augmentation.DiscriminativeGuidedWarp
+   data.augmentation.DiscriminativeGuidedWarpShape
    data.augmentation.Jitter
    data.augmentation.MagnitudeWarp
    data.augmentation.Permutation
+   data.augmentation.RandomGuidedWarp
+   data.augmentation.RandomGuidedWarpShape
    data.augmentation.Scaling
    data.augmentation.SignFlip
+   data.augmentation.Spawner
    data.augmentation.TimeWarp
+   data.augmentation.Wdba
    data.augmentation.WindowSlice
    data.augmentation.WindowWarp
    data.encoders.EncoderNormalizer

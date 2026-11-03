@@ -599,26 +599,21 @@ def _dtw_value(prototype: torch.Tensor, sample: torch.Tensor, window=None) -> fl
     return float(_cummulative_matrix(cost, window)[-1, -1].item())
 
 
-def _shape_dtw_path(
+def _shape_cost(
     prototype: torch.Tensor,
     sample: torch.Tensor,
-    window=None,
-    descr_ratio: float = 0.05,
-):
-    """Alignment path using shape descriptors instead of pointwise distance.
+    window: int,
+    descr_ratio: float,
+) -> torch.Tensor:
+    """Band-limited matrix of shape descriptor distances, as ``shape_dtw`` builds it.
 
-    Port of ``shape_dtw`` in ``thuml``'s ``dtw.py``, symmetric branch only.
     Each position is described by a short slice of the edge-padded series
-    rather than by its own value, so the cost compares local shapes. This is
-    what the ``*Shape`` augmentation variants align on; it is not the same as
-    running the pointwise distance on a differenced series.
+    rather than by its own value, so the cost compares local shapes. The body
+    is ``dtw.py:120-137`` unchanged. Factored out so that the path and the
+    accumulated value cannot drift apart, exactly as ``_pointwise_cost`` is.
     """
     p = prototype.shape[0]
     s = sample.shape[0]
-    if p == 0 or s == 0:
-        raise ValueError("shape dtw needs two non-empty series")
-    if window is None:
-        window = s
 
     p_len = int(min(100, max(5, round(p * descr_ratio))))
     s_len = int(min(100, max(5, round(s * descr_ratio))))
@@ -639,8 +634,71 @@ def _shape_dtw_path(
         for j in range(max(0, i - window), min(s, i + window)):
             descr_s = sample_pad[j : j + s_len]
             cost[i, j] = torch.linalg.norm(descr_s - descr_p)
+    return cost
+
+
+def _shape_dtw_path(
+    prototype: torch.Tensor,
+    sample: torch.Tensor,
+    window=None,
+    descr_ratio: float = 0.05,
+):
+    """Alignment path using shape descriptors instead of pointwise distance.
+
+    Port of ``shape_dtw`` in ``thuml``'s ``dtw.py``, symmetric branch only,
+    with ``return_flag=RETURN_PATH``. This is what the ``*Shape`` augmentation
+    variants align on; it is not the same as running the pointwise distance on
+    a differenced series.
+    """
+    p = prototype.shape[0]
+    s = sample.shape[0]
+    if p == 0 or s == 0:
+        raise ValueError("shape dtw needs two non-empty series")
+    if window is None:
+        window = s
+
+    cost = _shape_cost(prototype, sample, window, descr_ratio)
 
     return _traceback(_cummulative_matrix(cost, window))
+
+
+def _shape_dtw_value(
+    prototype: torch.Tensor,
+    sample: torch.Tensor,
+    window=None,
+    descr_ratio: float = 0.05,
+) -> float:
+    """Accumulated shape DTW distance between two series.
+
+    Port of ``shape_dtw`` in ``thuml``'s ``dtw.py`` with the default
+    ``return_flag=RETURN_VALUE``, which returns ``DTW[-1, -1]``. Needed because
+    ``discriminative_guided_warp``'s shape branch scores its candidate
+    prototypes with ``shape_dtw(..., RETURN_VALUE)``, not with the pointwise
+    distance.
+    """
+    p = prototype.shape[0]
+    s = sample.shape[0]
+    if p == 0 or s == 0:
+        raise ValueError("shape dtw needs two non-empty series")
+    if window is None:
+        window = s
+
+    cost = _shape_cost(prototype, sample, window, descr_ratio)
+
+    return float(_cummulative_matrix(cost, window)[-1, -1].item())
+
+
+_DISTANCE_FOR_ALIGNMENT = {
+    _dtw_path: _dtw_value,
+    _shape_dtw_path: _shape_dtw_value,
+}
+"""The ``RETURN_VALUE`` counterpart of each alignment function.
+
+``DiscriminativeGuidedWarp`` needs both a path and a scalar distance, and
+upstream takes both from the same ``dtw`` / ``shape_dtw`` call. Deriving the
+distance from the chosen alignment function keeps the pair in step: a subclass
+that switches ``_align`` cannot end up scoring with the other cost.
+"""
 
 
 def _stretch_path(path: torch.Tensor, n_steps: int) -> torch.Tensor:
@@ -686,6 +744,43 @@ def _require_neighbours(neighbours, name: str) -> None:
             "the training split of a data module configured with "
             "augmentation_label."
         )
+
+
+def _draw_distinct(sampler, window_idx: int, rng: torch.Generator, wanted: int) -> list:
+    """Distinct window indices, standing in for ``choice(..., replace=False)``.
+
+    ``NeighbourIndex`` samples one index at a time, so distinctness is enforced
+    by rejection. The attempt budget bounds the loop when the pool is smaller
+    than ``wanted``; drawing fewer is the same situation as upstream's
+    ``k = min(choices.size, batch_size)``.
+
+    Parameters
+    ----------
+    sampler : callable
+        ``(window_idx, rng) -> int``, one of ``NeighbourIndex``'s samplers
+    window_idx : int
+        the window asking for neighbours
+    rng : torch.Generator
+        the only source of randomness
+    wanted : int
+        how many distinct indices to aim for
+
+    Returns
+    -------
+    list of int
+        up to ``wanted`` distinct window indices
+    """
+    picked = []
+    seen = set()
+    for _ in range(4 * (wanted + 1)):
+        if len(picked) >= wanted:
+            break
+        candidate = sampler(window_idx, rng)
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        picked.append(candidate)
+    return picked
 
 
 class Spawner(BaseAugmentation):
@@ -787,24 +882,10 @@ class Wdba(BaseAugmentation):
         super().__init__()
 
     def _draw_prototypes(self, neighbours, window_idx, rng):
-        """Distinct neighbour windows, standing in for ``choice(replace=False)``.
-
-        ``NeighbourIndex`` samples one index at a time, so distinctness is
-        enforced by rejection. The attempt budget bounds the loop when the
-        pool is smaller than ``batch_size``; drawing fewer is the same
-        situation as upstream's ``k = min(choices.size, batch_size)``.
-        """
-        wanted = self.batch_size - 1
-        picked = []
-        seen = set()
-        for _ in range(4 * self.batch_size):
-            if len(picked) >= wanted:
-                break
-            candidate = neighbours.sample_index(window_idx, rng)
-            if candidate in seen:
-                continue
-            seen.add(candidate)
-            picked.append(candidate)
+        """Distinct neighbour windows, standing in for ``choice(replace=False)``."""
+        picked = _draw_distinct(
+            neighbours.sample_index, window_idx, rng, self.batch_size - 1
+        )
         return [neighbours.dataset._slice_window(i) for i in picked]
 
     def transform(self, window, rng, neighbours=None):
@@ -887,3 +968,183 @@ def _last_aligned_position(
         if 0 <= prototype_step < n_steps:
             aligned[prototype_step] = sample_step
     return torch.tensor(aligned, dtype=torch.float32)
+
+
+class RandomGuidedWarp(BaseAugmentation):
+    """Warp the window onto a same-label neighbour's DTW path.
+
+    Ported from ``thuml``'s ``random_guided_warp``. A same-label window from
+    another series is drawn as the prototype, the window is aligned to it under
+    DTW with a Sakoe-Chiba band of ``ceil(n_steps / 10)``, and the window is
+    then read back along that alignment. The result keeps the window's own
+    values and only redistributes them in time, towards the prototype's pace.
+
+    Notes
+    -----
+    ``thuml`` exposes a ``slope_constraint`` and an ``asymmetric`` mode here.
+    Every call site in upstream defaults to ``"symmetric"``, so that mode is
+    the only one implemented and the parameter is not exposed.
+
+    Upstream's intra-class candidate set is built with
+    ``np.where(l[np.delete(np.arange(n), i)] == l[i])[0]``, whose indices are
+    positions in the *reduced* array but are then used to index the full array.
+    That off-by-one lets upstream pick the window itself, or a window of a
+    different class. ``NeighbourIndex`` selects correctly instead.
+    """
+
+    _tags = {
+        "requires_neighbours": True,
+        "touches_time_axis": True,
+    }
+
+    _align = staticmethod(_dtw_path)
+
+    def transform(self, window, rng, neighbours=None):
+        name = type(self).__name__
+        _require_neighbours(neighbours, name)
+        window_idx = _window_index(window, name)
+
+        n_steps = window["cont"].shape[0]
+        band = int(np.ceil(n_steps / 10.0))
+
+        neighbour = neighbours.sample(window_idx, rng)
+        own = NeighbourIndex.as_array(window)
+        other = NeighbourIndex.as_array(neighbour)
+
+        # upstream aligns ``dtw(prototype=neighbour, sample=own)`` and gathers
+        # the own window along the sample side of the path
+        _, path_own = type(self)._align(other, own, window=band)
+
+        return self.resample_positions(window, _stretch_path(path_own, n_steps))
+
+
+class RandomGuidedWarpShape(RandomGuidedWarp):
+    """``RandomGuidedWarp`` aligning on shape descriptors instead of points.
+
+    Ported from ``thuml``'s ``random_guided_warp_shape``, which is
+    ``random_guided_warp`` with ``dtw_type="shape"``. The only difference is
+    the cost the alignment minimises: a distance between short slices of the
+    edge-padded series rather than between single timesteps.
+    """
+
+    _align = staticmethod(_shape_dtw_path)
+
+
+class DiscriminativeGuidedWarp(BaseAugmentation):
+    """Warp the window onto the most discriminative same-label prototype.
+
+    Ported from ``thuml``'s ``discriminative_guided_warp``. Several same-label
+    and several differently-labelled windows are drawn; each same-label
+    candidate is scored by its mean DTW distance to the other same-label
+    candidates and to the differently-labelled ones, and the candidate
+    maximising ``mean distance to other labels - mean distance within the
+    label`` becomes the prototype. The window is then read back along its
+    alignment to that prototype, as in :class:`RandomGuidedWarp`.
+
+    Notes
+    -----
+    ``slope_constraint`` is not exposed, for the reason given on
+    :class:`RandomGuidedWarp`.
+
+    Upstream's ``use_variable_slice=True`` tail is **not** ported. It slices
+    every row of the batch with ``reduce_ratio = 0.9 + 0.1 * warp_amount[i] /
+    max(warp_amount)``, so the ratio is defined only relative to the other rows
+    of the same batch. A transform acting on one window at a time has no batch:
+    its own warp is the maximum, the ratio is exactly ``1.0``, and upstream's
+    ``window_slice`` returns its input unchanged at that ratio. The only
+    surviving case would be the batch-wide degenerate one where *no* row warped
+    at all, which cannot be decided from a single window. Compose
+    :class:`WindowSlice` explicitly if slicing is wanted.
+
+    Parameters
+    ----------
+    batch_size : int, default=6
+        How many candidates to compare. ``ceil(batch_size / 2)`` same-label
+        candidates and ``floor(batch_size / 2)`` differently-labelled ones,
+        as upstream splits it.
+    """
+
+    _tags = {
+        "requires_neighbours": True,
+        "touches_time_axis": True,
+    }
+
+    _align = staticmethod(_dtw_path)
+
+    def __init__(self, batch_size: int = 6):
+        self.batch_size = batch_size
+        super().__init__()
+
+    def _select_prototype(self, positives, negatives, distance, band) -> int:
+        """Index of the candidate closest to its own class, furthest from others.
+
+        ``augmentation.py:285-303``: the scores are means, the within-class one
+        over the ``pos_k - 1`` other positives and the between-class one over
+        all ``neg_k`` negatives.
+        """
+        n_pos = len(positives)
+        n_neg = len(negatives)
+
+        scores = torch.zeros(n_pos)
+        for p in range(n_pos):
+            within = 0.0
+            for other in range(n_pos):
+                if other != p:
+                    within += distance(positives[p], positives[other], window=band)
+            if n_pos > 1:
+                within = within / (n_pos - 1)
+            between = 0.0
+            for negative in negatives:
+                between += distance(positives[p], negative, window=band)
+            scores[p] = between / n_neg - within
+
+        return int(torch.argmax(scores).item())
+
+    def transform(self, window, rng, neighbours=None):
+        name = type(self).__name__
+        _require_neighbours(neighbours, name)
+        window_idx = _window_index(window, name)
+
+        n_steps = window["cont"].shape[0]
+        band = int(np.ceil(n_steps / 10.0))
+
+        positive_batch = int(np.ceil(self.batch_size / 2.0))
+        negative_batch = int(np.floor(self.batch_size / 2.0))
+
+        positive_ids = _draw_distinct(
+            neighbours.sample_index, window_idx, rng, positive_batch
+        )
+        negative_ids = _draw_distinct(
+            neighbours.sample_other_label_index, window_idx, rng, negative_batch
+        )
+
+        identity = torch.arange(n_steps, dtype=torch.float32)
+        if not positive_ids or not negative_ids:
+            # upstream's ``else`` branch returns the pattern untouched
+            return self.resample_positions(window, identity)
+
+        fetch = neighbours.dataset._slice_window
+        positives = [NeighbourIndex.as_array(fetch(i)) for i in positive_ids]
+        negatives = [NeighbourIndex.as_array(fetch(i)) for i in negative_ids]
+
+        align = type(self)._align
+        distance = _DISTANCE_FOR_ALIGNMENT[align]
+        selected = self._select_prototype(positives, negatives, distance, band)
+
+        own = NeighbourIndex.as_array(window)
+        _, path_own = align(positives[selected], own, window=band)
+
+        return self.resample_positions(window, _stretch_path(path_own, n_steps))
+
+
+class DiscriminativeGuidedWarpShape(DiscriminativeGuidedWarp):
+    """``DiscriminativeGuidedWarp`` scoring and aligning on shape descriptors.
+
+    Ported from ``thuml``'s ``discriminative_guided_warp_shape``, which is
+    ``discriminative_guided_warp`` with ``dtw_type="shape"``. Upstream switches
+    both the candidate scoring and the final alignment to ``shape_dtw``, which
+    is why the distance used for scoring is looked up from ``_align`` rather
+    than fixed.
+    """
+
+    _align = staticmethod(_shape_dtw_path)

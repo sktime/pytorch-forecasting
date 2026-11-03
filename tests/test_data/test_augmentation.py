@@ -475,6 +475,32 @@ def test_the_transforms_are_importable_from_the_data_package():
         assert issubclass(cls, Base)
 
 
+def test_all_fourteen_transforms_are_importable():
+    """Every transform in the set, reachable from the short path."""
+    import pytorch_forecasting.data as pfd
+    from pytorch_forecasting.data import BaseAugmentation as Base
+
+    names = [
+        "Jitter",
+        "Scaling",
+        "MagnitudeWarp",
+        "SignFlip",
+        "Permutation",
+        "TimeWarp",
+        "WindowSlice",
+        "WindowWarp",
+        "Spawner",
+        "Wdba",
+        "RandomGuidedWarp",
+        "RandomGuidedWarpShape",
+        "DiscriminativeGuidedWarp",
+        "DiscriminativeGuidedWarpShape",
+    ]
+    assert len(names) == 14
+    for name in names:
+        assert issubclass(getattr(pfd, name), Base), name
+
+
 class _NeedsNeighbours(BaseAugmentation):
     """Copies the neighbour's continuous block in. For plumbing tests."""
 
@@ -703,10 +729,17 @@ def test_shape_dtw_differs_from_pointwise_dtw():
     assert len(shaped) == 27
 
 
-GUIDED_PAIR = ["Spawner", "Wdba"]
+GUIDED = [
+    "Spawner",
+    "Wdba",
+    "RandomGuidedWarp",
+    "RandomGuidedWarpShape",
+    "DiscriminativeGuidedWarp",
+    "DiscriminativeGuidedWarpShape",
+]
 
 
-@pytest.mark.parametrize("name", GUIDED_PAIR)
+@pytest.mark.parametrize("name", GUIDED)
 def test_guided_transform_declares_its_tags(name):
     import pytorch_forecasting.data.augmentation as aug
 
@@ -715,7 +748,7 @@ def test_guided_transform_declares_its_tags(name):
     assert tags["touches_time_axis"] is True
 
 
-@pytest.mark.parametrize("name", GUIDED_PAIR)
+@pytest.mark.parametrize("name", GUIDED)
 def test_guided_transform_runs_end_to_end_in_the_data_module(name):
     """The real check: it works through the data module with a real pool."""
     import pytorch_forecasting.data.augmentation as aug
@@ -736,7 +769,7 @@ def test_guided_transform_runs_end_to_end_in_the_data_module(name):
     assert torch.isfinite(x["history_target"]).all()
 
 
-@pytest.mark.parametrize("name", GUIDED_PAIR)
+@pytest.mark.parametrize("name", GUIDED)
 def test_guided_transform_needs_a_neighbour_index(name):
     """Called bare, with no pool, it must fail loudly rather than no-op."""
     import pytorch_forecasting.data.augmentation as aug
