@@ -59,7 +59,9 @@ class BaseAugmentation(_BaseObject):
             ``(ctx + pred, n_cat)``, ``target`` of shape
             ``(ctx + pred, n_targets)``, plus ``ctx_len`` and ``pred_len``.
             ``target`` is always 2D, with ``n_targets == 1`` in the univariate
-            case.
+            case. ``window_idx`` carries the window's position in the
+            dataset's window list, which is how the label guided transforms
+            address ``neighbours``.
         rng : torch.Generator
             The only source of randomness a transform may use.
         neighbours : NeighbourIndex, optional
@@ -481,3 +483,407 @@ class NeighbourIndex:
         ordering, so a euclidean distance over them is meaningless.
         """
         return torch.cat([window["cont"], window["target"]], dim=1)
+
+
+def _cummulative_matrix(cost: torch.Tensor, window: int) -> torch.Tensor:
+    """Accumulate a local cost matrix under the symmetric slope constraint.
+
+    Port of ``_cummulative_matrix`` in ``thuml``'s ``dtw.py``, symmetric branch
+    only. The result is one larger than ``cost`` in each dimension, with the
+    extra row and column acting as the boundary.
+    """
+    p, s = cost.shape
+
+    dtw = torch.full((p + 1, s + 1), float("inf"))
+    dtw[0, 0] = 0.0
+
+    for i in range(1, p + 1):
+        for j in range(max(1, i - window), min(s, i + window) + 1):
+            dtw[i, j] = cost[i - 1, j - 1] + torch.min(
+                torch.stack([dtw[i - 1, j - 1], dtw[i, j - 1], dtw[i - 1, j]])
+            )
+    return dtw
+
+
+def _traceback(dtw: torch.Tensor):
+    """Walk an accumulated matrix back into an alignment path.
+
+    Port of ``_traceback`` in ``thuml``'s ``dtw.py``, symmetric branch only.
+    """
+    i = dtw.shape[0] - 1
+    j = dtw.shape[1] - 1
+    path_p = [i - 1]
+    path_q = [j - 1]
+
+    while i > 1 or j > 1:
+        step = torch.stack([dtw[i - 1, j - 1], dtw[i - 1, j], dtw[i, j - 1]])
+        choice = int(torch.argmin(step).item())
+        if choice == 0:
+            i, j = i - 1, j - 1
+        elif choice == 1:
+            i = i - 1
+        else:
+            j = j - 1
+        path_p.insert(0, i - 1)
+        path_q.insert(0, j - 1)
+
+    return torch.tensor(path_p), torch.tensor(path_q)
+
+
+def _pointwise_cost(
+    prototype: torch.Tensor, sample: torch.Tensor, window: int
+) -> torch.Tensor:
+    """Band-limited matrix of pointwise distances, as ``thuml``'s ``dtw`` builds it.
+
+    Factored out of ``_dtw_path`` only because ``Wdba`` needs the accumulated
+    value as well as the path, and two copies of this loop would be free to
+    drift apart. The body is ``dtw.py:64-68`` unchanged.
+    """
+    p = prototype.shape[0]
+    s = sample.shape[0]
+
+    cost = torch.full((p, s), float("inf"))
+    for i in range(p):
+        start = max(0, i - window)
+        end = min(s, i + window) + 1
+        cost[i, start:end] = torch.linalg.norm(sample[start:end] - prototype[i], dim=1)
+    return cost
+
+
+def _dtw_path(prototype: torch.Tensor, sample: torch.Tensor, window=None):
+    """Alignment path between two multivariate series, pointwise distance.
+
+    Port of ``dtw`` in ``thuml``'s ``dtw.py`` with ``return_flag=RETURN_PATH``
+    and ``slope_constraint="symmetric"``.
+
+    Parameters
+    ----------
+    prototype, sample : torch.Tensor
+        shapes ``(p, n_features)`` and ``(s, n_features)``
+    window : int, optional
+        Sakoe-Chiba band half-width. ``None`` means no constraint. Callers
+        pass ``ceil(n_steps / 10)``, as ``thuml`` does.
+
+    Returns
+    -------
+    tuple of torch.Tensor
+        two index sequences of equal length, giving the aligned pairs
+    """
+    p = prototype.shape[0]
+    s = sample.shape[0]
+    if p == 0 or s == 0:
+        raise ValueError("dtw needs two non-empty series")
+    if window is None:
+        window = s
+
+    cost = _pointwise_cost(prototype, sample, window)
+
+    return _traceback(_cummulative_matrix(cost, window))
+
+
+def _dtw_value(prototype: torch.Tensor, sample: torch.Tensor, window=None) -> float:
+    """Accumulated DTW distance between two series.
+
+    Port of ``dtw`` in ``thuml``'s ``dtw.py`` with the default
+    ``return_flag=RETURN_VALUE``, which returns ``DTW[-1, -1]``.
+    """
+    p = prototype.shape[0]
+    s = sample.shape[0]
+    if p == 0 or s == 0:
+        raise ValueError("dtw needs two non-empty series")
+    if window is None:
+        window = s
+
+    cost = _pointwise_cost(prototype, sample, window)
+
+    return float(_cummulative_matrix(cost, window)[-1, -1].item())
+
+
+def _shape_dtw_path(
+    prototype: torch.Tensor,
+    sample: torch.Tensor,
+    window=None,
+    descr_ratio: float = 0.05,
+):
+    """Alignment path using shape descriptors instead of pointwise distance.
+
+    Port of ``shape_dtw`` in ``thuml``'s ``dtw.py``, symmetric branch only.
+    Each position is described by a short slice of the edge-padded series
+    rather than by its own value, so the cost compares local shapes. This is
+    what the ``*Shape`` augmentation variants align on; it is not the same as
+    running the pointwise distance on a differenced series.
+    """
+    p = prototype.shape[0]
+    s = sample.shape[0]
+    if p == 0 or s == 0:
+        raise ValueError("shape dtw needs two non-empty series")
+    if window is None:
+        window = s
+
+    p_len = int(min(100, max(5, round(p * descr_ratio))))
+    s_len = int(min(100, max(5, round(s * descr_ratio))))
+
+    def _pad(series, feature_len):
+        front = int(np.ceil(feature_len / 2.0))
+        back = int(np.floor(feature_len / 2.0))
+        first = series[:1].expand(front, -1)
+        last = series[-1:].expand(back, -1)
+        return torch.cat([first, series, last], dim=0)
+
+    prototype_pad = _pad(prototype, p_len)
+    sample_pad = _pad(sample, s_len)
+
+    cost = torch.full((p, s), float("inf"))
+    for i in range(p):
+        descr_p = prototype_pad[i : i + p_len]
+        for j in range(max(0, i - window), min(s, i + window)):
+            descr_s = sample_pad[j : j + s_len]
+            cost[i, j] = torch.linalg.norm(descr_s - descr_p)
+
+    return _traceback(_cummulative_matrix(cost, window))
+
+
+def _stretch_path(path: torch.Tensor, n_steps: int) -> torch.Tensor:
+    """Spread an alignment path of any length over ``n_steps`` output positions.
+
+    ``thuml`` finishes its guided transforms with
+    ``np.interp(orig_steps, np.linspace(0, T - 1, len(path)), values[path])``,
+    interpolating the *values* it gathered along the path. Returning float
+    source positions instead is equivalent, because a symmetric DTW path steps
+    by at most one index at a time: blending ``series[k]`` with ``series[k + 1]``
+    and reading ``series`` at ``k + w`` are the same number. Positions are what
+    ``resample_positions`` needs in order to carry the categorical block along.
+    """
+    length = path.shape[0]
+    positions = path.to(torch.float32)
+    if n_steps == 1 or length == 1:
+        return positions[:1].expand(n_steps).clone()
+
+    grid = torch.arange(n_steps, dtype=torch.float32) * (length - 1) / (n_steps - 1)
+    lower = grid.floor().long().clamp(0, length - 1)
+    upper = (lower + 1).clamp(max=length - 1)
+    weight = grid - lower.to(grid.dtype)
+    return positions[lower] * (1 - weight) + positions[upper] * weight
+
+
+def _window_index(window: dict, name: str) -> int:
+    """The window's own index, or a clear error naming what is missing."""
+    window_idx = window.get("window_idx")
+    if window_idx is None:
+        raise ValueError(
+            f"{name} needs 'window_idx' in the window dict to look its "
+            "neighbour pool up. The data module supplies it; a transform "
+            "called on a hand-built window must supply it too."
+        )
+    return int(window_idx)
+
+
+def _require_neighbours(neighbours, name: str) -> None:
+    """Refuse to run without a pool, rather than silently doing nothing."""
+    if neighbours is None:
+        raise ValueError(
+            f"{name} needs a same-label neighbour pool. It is only usable on "
+            "the training split of a data module configured with "
+            "augmentation_label."
+        )
+
+
+class Spawner(BaseAugmentation):
+    """Average the window with a same-label neighbour along their DTW path.
+
+    Ported from ``thuml``'s ``spawner``. The neighbour is drawn from the
+    training split only, via ``NeighbourIndex``, and always from a different
+    series.
+
+    Following ``thuml``, the alignment is computed in two independent halves
+    split at a random step, which lets the two series trade time differently
+    before and after the split. The DTW band is ``ceil(n_steps / 10)``
+    computed on the *full* window, as upstream does, not on each half.
+
+    Parameters
+    ----------
+    sigma : float, default=0.05
+        Standard deviation of the jitter applied after the average.
+    """
+
+    _tags = {
+        "requires_neighbours": True,
+        "touches_time_axis": True,
+    }
+
+    def __init__(self, sigma: float = 0.05):
+        self.sigma = sigma
+        super().__init__()
+
+    def _jitter(self, out: dict, rng: torch.Generator) -> dict:
+        for key in ("cont", "target"):
+            noise = torch.randn(out[key].shape, generator=rng) * self.sigma
+            out[key] = out[key] + noise
+        return out
+
+    def transform(self, window, rng, neighbours=None):
+        _require_neighbours(neighbours, "Spawner")
+        window_idx = _window_index(window, "Spawner")
+
+        n_steps = window["cont"].shape[0]
+        if n_steps < 3:
+            # upstream draws the split from ``randint(1, n_steps - 1)``, which
+            # is empty below three steps; nothing to align, so only jitter.
+            return self._jitter(dict(window), rng)
+
+        split = int(torch.randint(1, n_steps - 1, (1,), generator=rng).item())
+        band = int(np.ceil(n_steps / 10.0))
+
+        neighbour = neighbours.sample(window_idx, rng)
+        own = NeighbourIndex.as_array(window)
+        other = NeighbourIndex.as_array(neighbour)
+
+        head_own, head_other = _dtw_path(own[:split], other[:split], window=band)
+        tail_own, tail_other = _dtw_path(own[split:], other[split:], window=band)
+        path_own = torch.cat([head_own, tail_own + split])
+        path_other = torch.cat([head_other, tail_other + split])
+
+        out = self.resample_positions(window, _stretch_path(path_own, n_steps))
+        warped = self.resample_positions(neighbour, _stretch_path(path_other, n_steps))
+        for key in ("cont", "target"):
+            out[key] = 0.5 * (out[key] + warped[key])
+
+        return self._jitter(out, rng)
+
+
+class Wdba(BaseAugmentation):
+    """Weighted DBA: replace the window with a weighted average of its class.
+
+    Ported from ``thuml``'s ``wdba``. A handful of same-label windows are
+    drawn, the one closest to all the others under DTW becomes the medoid, and
+    the rest are warped onto the medoid's time axis and averaged in with a
+    weight that halves at the distance of the medoid's nearest neighbour.
+
+    Two adaptations are worth knowing about, both forced by the fact that
+    ``NeighbourIndex`` deliberately excludes the window's own series:
+
+    * Upstream's intra-class pool includes the window itself, so
+      ``np.random.choice`` may or may not pick it. Here the window is always
+      the first prototype and the rest are sampled neighbours, which keeps the
+      augmented window anchored to its own data.
+    * The categorical block is left on the window's own time axis. The
+      averaged values live on the medoid's index axis, which runs ``0..T-1``
+      just as the window's own does, so output step ``t`` still describes step
+      ``t`` and no categorical code moves.
+
+    Parameters
+    ----------
+    batch_size : int, default=6
+        How many same-label windows to average, the window itself included.
+    """
+
+    _tags = {
+        "requires_neighbours": True,
+        "touches_time_axis": True,
+    }
+
+    def __init__(self, batch_size: int = 6):
+        self.batch_size = batch_size
+        super().__init__()
+
+    def _draw_prototypes(self, neighbours, window_idx, rng):
+        """Distinct neighbour windows, standing in for ``choice(replace=False)``.
+
+        ``NeighbourIndex`` samples one index at a time, so distinctness is
+        enforced by rejection. The attempt budget bounds the loop when the
+        pool is smaller than ``batch_size``; drawing fewer is the same
+        situation as upstream's ``k = min(choices.size, batch_size)``.
+        """
+        wanted = self.batch_size - 1
+        picked = []
+        seen = set()
+        for _ in range(4 * self.batch_size):
+            if len(picked) >= wanted:
+                break
+            candidate = neighbours.sample_index(window_idx, rng)
+            if candidate in seen:
+                continue
+            seen.add(candidate)
+            picked.append(candidate)
+        return [neighbours.dataset._slice_window(i) for i in picked]
+
+    def transform(self, window, rng, neighbours=None):
+        _require_neighbours(neighbours, "Wdba")
+        window_idx = _window_index(window, "Wdba")
+
+        n_steps = window["cont"].shape[0]
+        band = int(np.ceil(n_steps / 10.0))
+
+        prototypes = [window] + self._draw_prototypes(neighbours, window_idx, rng)
+        n_protos = len(prototypes)
+        identity = torch.arange(n_steps, dtype=torch.float32)
+        out = self.resample_positions(window, identity)
+        if n_protos < 2:
+            return out
+
+        arrays = [NeighbourIndex.as_array(proto) for proto in prototypes]
+
+        distances = torch.zeros((n_protos, n_protos))
+        for p in range(n_protos):
+            for s in range(n_protos):
+                if p != s:
+                    distances[p, s] = _dtw_value(arrays[p], arrays[s], window=band)
+
+        # ``argsort(...)[0]`` rather than ``argmin``: upstream relies on numpy
+        # breaking ties by index, and ties are common here because the matrix
+        # is symmetric under the symmetric slope constraint.
+        medoid = int(torch.argsort(distances.sum(dim=1), stable=True)[0].item())
+        nearest_order = torch.argsort(distances[medoid], stable=True).tolist()
+        # ``nearest_order[0]`` is the medoid itself, at distance zero.
+        reference = float(distances[medoid, nearest_order[1]].item())
+
+        totals = {key: torch.zeros_like(out[key]) for key in ("cont", "target")}
+        total_weight = 0.0
+        for nid in nearest_order:
+            if nid == medoid or reference == 0.0:
+                source = prototypes[medoid]
+                src_pos = identity
+                weight = 1.0
+            else:
+                path_medoid, path_other = _dtw_path(
+                    arrays[medoid], arrays[nid], window=band
+                )
+                src_pos = _last_aligned_position(path_medoid, path_other, n_steps)
+                value = float(distances[medoid, nid].item())
+                weight = float(np.exp(np.log(0.5) * value / reference))
+                source = prototypes[nid]
+
+            warped = self.resample_positions(source, src_pos)
+            for key in ("cont", "target"):
+                totals[key] = totals[key] + weight * warped[key]
+            total_weight += weight
+
+        for key in ("cont", "target"):
+            out[key] = totals[key] / total_weight
+        return out
+
+
+def _last_aligned_position(
+    path_prototype: torch.Tensor, path_sample: torch.Tensor, n_steps: int
+) -> torch.Tensor:
+    """Which sample step each prototype step reads, keeping the *last* match.
+
+    ``thuml``'s ``wdba`` accumulates with
+    ``average_pattern[path[0]] += weight * warped``. A DTW path repeats
+    prototype indices wherever the sample runs faster, and numpy's buffered
+    fancy-index assignment does not accumulate over duplicates: the last write
+    wins. So each prototype step ends up reading exactly one sample step, the
+    one from the final occurrence of that index in the path. Reproducing that
+    is what makes this port agree with upstream numerically; ``index_add_``
+    would accumulate instead and quietly give different numbers.
+
+    The same applies to ``weighted_sums[path[0]] += weight``, which is why the
+    divisor in ``Wdba`` is a single scalar rather than a per-step vector.
+    """
+    aligned = list(range(n_steps))
+    for prototype_step, sample_step in zip(
+        path_prototype.tolist(), path_sample.tolist()
+    ):
+        if 0 <= prototype_step < n_steps:
+            aligned[prototype_step] = sample_step
+    return torch.tensor(aligned, dtype=torch.float32)

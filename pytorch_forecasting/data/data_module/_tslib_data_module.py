@@ -117,6 +117,7 @@ class _TslibDataset(Dataset):
             "_history_indices": history_indices,
             "_future_indices": future_indices,
             "_series_idx": series_idx,
+            "_window_idx": idx,
         }
 
     def _augment(self, window: dict[str, Any]) -> dict[str, Any]:
@@ -125,6 +126,11 @@ class _TslibDataset(Dataset):
         Transforms see only the public blocks, so they cannot reach the
         internal keys ``_assemble`` relies on. Their output is merged back
         rather than replacing the dict wholesale.
+
+        ``window_idx`` is the one piece of identity a transform does see: the
+        label guided transforms look their neighbour pool up by it, and
+        ``NeighbourIndex`` is indexed by position in this dataset's window
+        list, which is exactly the ``idx`` ``__getitem__`` was called with.
         """
         public = {
             "cont": window["cont"],
@@ -132,6 +138,7 @@ class _TslibDataset(Dataset):
             "target": window["target"],
             "ctx_len": window["ctx_len"],
             "pred_len": window["pred_len"],
+            "window_idx": window["_window_idx"],
         }
 
         for transform in self.augmentation:

@@ -17,6 +17,8 @@ from pytorch_forecasting.data.augmentation import (
     TimeWarp,
     WindowSlice,
     WindowWarp,
+    _dtw_path,
+    _shape_dtw_path,
 )
 from pytorch_forecasting.data.data_module._tslib_data_module import TslibDataModule
 from pytorch_forecasting.data.timeseries._timeseries_v2 import TimeSeries
@@ -622,3 +624,125 @@ def test_as_array_concatenates_cont_and_target_without_cat():
     array = NeighbourIndex.as_array(window)
 
     assert array.shape == (8, 3)
+
+
+DTW_FNS = [_dtw_path, _shape_dtw_path]
+
+
+@pytest.mark.parametrize("dtw_fn", DTW_FNS, ids=lambda f: f.__name__)
+def test_dtw_path_of_a_series_with_itself_is_the_diagonal(dtw_fn):
+    series = torch.arange(12, dtype=torch.float32).unsqueeze(-1)
+
+    path_a, path_b = dtw_fn(series, series)
+
+    assert torch.equal(path_a, path_b)
+    assert path_a[0] == 0 and path_a[-1] == 11
+
+
+@pytest.mark.parametrize("dtw_fn", DTW_FNS, ids=lambda f: f.__name__)
+def test_dtw_path_covers_both_series_end_to_end(dtw_fn):
+    a = torch.arange(12, dtype=torch.float32).unsqueeze(-1)
+    b = torch.arange(12, dtype=torch.float32).unsqueeze(-1) * 0.5
+
+    path_a, path_b = dtw_fn(a, b)
+
+    assert len(path_a) == len(path_b)
+    assert path_a[0] == 0 and path_b[0] == 0
+    assert path_a[-1] == 11 and path_b[-1] == 11
+
+
+@pytest.mark.parametrize("dtw_fn", DTW_FNS, ids=lambda f: f.__name__)
+def test_dtw_path_is_monotone(dtw_fn):
+    a = torch.randn(12, 2, generator=torch.Generator().manual_seed(0))
+    b = torch.randn(12, 2, generator=torch.Generator().manual_seed(1))
+
+    path_a, path_b = dtw_fn(a, b)
+
+    assert (path_a[1:] - path_a[:-1] >= 0).all()
+    assert (path_b[1:] - path_b[:-1] >= 0).all()
+
+
+@pytest.mark.parametrize("dtw_fn", DTW_FNS, ids=lambda f: f.__name__)
+def test_dtw_path_rejects_an_empty_series(dtw_fn):
+    series = torch.arange(12, dtype=torch.float32).unsqueeze(-1)
+
+    with pytest.raises(ValueError):
+        dtw_fn(series, series[:0])
+
+
+def test_the_window_constrains_the_path():
+    """A narrow band forbids the long jumps an unconstrained path would take."""
+    a = torch.arange(20, dtype=torch.float32).unsqueeze(-1)
+    b = torch.cat([torch.zeros(10), torch.arange(10, dtype=torch.float32)])
+    b = b.unsqueeze(-1)
+
+    _, wide = _dtw_path(a, b, window=None)
+    _, narrow = _dtw_path(a, b, window=2)
+
+    assert (narrow.max() - narrow.min()) <= (wide.max() - wide.min())
+    offsets = torch.arange(len(narrow)) - narrow
+    assert offsets.abs().max() <= 3
+
+
+def test_shape_dtw_differs_from_pointwise_dtw():
+    """The two distances are not interchangeable: shape compares local slices.
+
+    A sawtooth against a triangle wave aligns differently under the two costs,
+    so a port that quietly reused the pointwise cost for the shape variants
+    would fail here. The two expected lengths are what ``thuml``'s numpy
+    ``dtw`` and ``shape_dtw`` return for these exact series, so this pins the
+    port rather than merely asserting the two differ.
+    """
+    saw = (torch.arange(24) % 6).to(torch.float32).unsqueeze(-1)
+    tri = ((torch.arange(24) % 8) - 4).abs().to(torch.float32).unsqueeze(-1)
+
+    _, pointwise = _dtw_path(saw, tri)
+    _, shaped = _shape_dtw_path(saw, tri)
+
+    assert len(pointwise) == 29
+    assert len(shaped) == 27
+
+
+GUIDED_PAIR = ["Spawner", "Wdba"]
+
+
+@pytest.mark.parametrize("name", GUIDED_PAIR)
+def test_guided_transform_declares_its_tags(name):
+    import pytorch_forecasting.data.augmentation as aug
+
+    tags = getattr(aug, name)().get_class_tags()
+    assert tags["requires_neighbours"] is True
+    assert tags["touches_time_axis"] is True
+
+
+@pytest.mark.parametrize("name", GUIDED_PAIR)
+def test_guided_transform_runs_end_to_end_in_the_data_module(name):
+    """The real check: it works through the data module with a real pool."""
+    import pytorch_forecasting.data.augmentation as aug
+
+    dm = _make_labelled_dm(
+        n_per_label=5,
+        n_labels=2,
+        augmentation=getattr(aug, name)(),
+        augmentation_label="label",
+    )
+    dm.setup(stage="fit")
+
+    x, y = dm.train_dataset[0]
+
+    assert x["history_cont"].shape[0] == dm.context_length
+    assert x["future_cont"].shape[0] == dm.prediction_length
+    assert torch.isfinite(x["history_cont"]).all()
+    assert torch.isfinite(x["history_target"]).all()
+
+
+@pytest.mark.parametrize("name", GUIDED_PAIR)
+def test_guided_transform_needs_a_neighbour_index(name):
+    """Called bare, with no pool, it must fail loudly rather than no-op."""
+    import pytorch_forecasting.data.augmentation as aug
+
+    window = _window(ctx=16, pred=8)
+    rng = torch.Generator().manual_seed(0)
+
+    with pytest.raises((ValueError, AssertionError, AttributeError)):
+        getattr(aug, name)().transform(window, rng, neighbours=None)
