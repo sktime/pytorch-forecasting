@@ -5,9 +5,12 @@ so the same window looks different in every epoch. They are applied by
 ``_TslibDataset.__getitem__`` on the training split only, and are off unless
 explicitly enabled.
 
-The set follows ``thuml``'s ``utils/augmentation.py``, with two deliberate
-deviations, both documented on the classes concerned: ``rotation`` keeps only
-the sign flip, and time axis warps are shared across channels.
+The set follows ``thuml``'s ``utils/augmentation.py``. Where it departs from
+upstream the reason is documented on the class concerned: ``rotation`` keeps
+only the sign flip, time axis warps are shared across channels, ``Permutation``
+always reorders, and ``DiscriminativeGuidedWarp`` omits ``use_variable_slice``.
+Only the symmetric slope constraint is implemented, so ``slope_constraint`` is
+not exposed.
 """
 
 __author__ = ["echo-xiao"]
@@ -152,7 +155,12 @@ class Jitter(BaseAugmentation):
         self.sigma = sigma
         super().__init__()
 
-    def transform(self, window, rng, neighbours=None):
+    def transform(
+        self,
+        window: dict,
+        rng: torch.Generator,
+        neighbours=None,
+    ) -> dict:
         out = dict(window)
         for key in ("cont", "target"):
             block = window[key]
@@ -174,7 +182,12 @@ class Scaling(BaseAugmentation):
         self.sigma = sigma
         super().__init__()
 
-    def transform(self, window, rng, neighbours=None):
+    def transform(
+        self,
+        window: dict,
+        rng: torch.Generator,
+        neighbours=None,
+    ) -> dict:
         out = dict(window)
         for key in ("cont", "target"):
             block = window[key]
@@ -200,7 +213,12 @@ class MagnitudeWarp(BaseAugmentation):
         self.knot = knot
         super().__init__()
 
-    def transform(self, window, rng, neighbours=None):
+    def transform(
+        self,
+        window: dict,
+        rng: torch.Generator,
+        neighbours=None,
+    ) -> dict:
         out = dict(window)
         n_steps = window["cont"].shape[0]
         for key in ("cont", "target"):
@@ -224,7 +242,12 @@ class SignFlip(BaseAugmentation):
     the call site.
     """
 
-    def transform(self, window, rng, neighbours=None):
+    def transform(
+        self,
+        window: dict,
+        rng: torch.Generator,
+        neighbours=None,
+    ) -> dict:
         out = dict(window)
         for key in ("cont", "target"):
             block = window[key]
@@ -245,6 +268,11 @@ class Permutation(BaseAugmentation):
     sometimes no-ops is both weaker as a regulariser and untestable: a test
     asserting the data changed would fail intermittently.
 
+    Segments come from ``torch.chunk``, which is not ``numpy.array_split``:
+    it returns *at most* the requested count, fewer when the length does not
+    divide evenly, and distributes the remainder differently. So the effective
+    segmentation differs from upstream's even where the drawn count agrees.
+
     Parameters
     ----------
     max_segments : int, default=5
@@ -258,7 +286,12 @@ class Permutation(BaseAugmentation):
         self.max_segments = max_segments
         super().__init__()
 
-    def transform(self, window, rng, neighbours=None):
+    def transform(
+        self,
+        window: dict,
+        rng: torch.Generator,
+        neighbours=None,
+    ) -> dict:
         n_steps = window["cont"].shape[0]
         n_segments = int(
             torch.randint(2, self.max_segments + 1, (1,), generator=rng).item()
@@ -297,7 +330,12 @@ class TimeWarp(BaseAugmentation):
         self.knot = knot
         super().__init__()
 
-    def transform(self, window, rng, neighbours=None):
+    def transform(
+        self,
+        window: dict,
+        rng: torch.Generator,
+        neighbours=None,
+    ) -> dict:
         n_steps = window["cont"].shape[0]
 
         # one positive curve, shared by every block and channel
@@ -325,7 +363,12 @@ class WindowSlice(BaseAugmentation):
         self.reduce_ratio = reduce_ratio
         super().__init__()
 
-    def transform(self, window, rng, neighbours=None):
+    def transform(
+        self,
+        window: dict,
+        rng: torch.Generator,
+        neighbours=None,
+    ) -> dict:
         n_steps = window["cont"].shape[0]
         span = max(2, int(round(n_steps * self.reduce_ratio)))
         if span >= n_steps:
@@ -356,7 +399,12 @@ class WindowWarp(BaseAugmentation):
         self.scales = scales
         super().__init__()
 
-    def transform(self, window, rng, neighbours=None):
+    def transform(
+        self,
+        window: dict,
+        rng: torch.Generator,
+        neighbours=None,
+    ) -> dict:
         n_steps = window["cont"].shape[0]
         warp_size = max(2, int(round(n_steps * self.window_ratio)))
         if warp_size >= n_steps - 2:
@@ -431,10 +479,15 @@ class NeighbourIndex:
             series = {series_of_window[i] for i in members}
             if len(series) < 2:
                 raise ValueError(
-                    f"label {label!r} covers only one series, so windows with "
-                    "that label have no same-label neighbour from another "
-                    "series. Guided augmentations need at least two series per "
-                    "label in the training split."
+                    f"label {label!r} covers only one series in the training "
+                    "split, so windows with that label have no same-label "
+                    "neighbour from another series. Guided augmentations need "
+                    "at least two series per label there. Note the split is a "
+                    "random, unstratified permutation of the series, so a "
+                    "dataset that looks balanced overall can still land a "
+                    "label on a single training series: give each label enough "
+                    "series that it keeps two for any draw, or widen "
+                    "train_val_test_split."
                 )
 
     def sample_index(self, window_idx: int, rng: torch.Generator) -> int:
@@ -485,30 +538,40 @@ class NeighbourIndex:
         return torch.cat([window["cont"], window["target"]], dim=1)
 
 
-def _cummulative_matrix(cost: torch.Tensor, window: int) -> torch.Tensor:
+def _cummulative_matrix(cost: torch.Tensor, window: int) -> np.ndarray:
     """Accumulate a local cost matrix under the symmetric slope constraint.
 
     Port of ``_cummulative_matrix`` in ``thuml``'s ``dtw.py``, symmetric branch
     only. The result is one larger than ``cost`` in each dimension, with the
     extra row and column acting as the boundary.
-    """
-    p, s = cost.shape
 
-    dtw = torch.full((p + 1, s + 1), float("inf"))
+    The recurrence is inherently sequential, so it runs as a Python loop. It
+    accumulates in ``float64`` numpy rather than in torch: building a small
+    tensor per cell costs about twenty times more than the same loop over
+    numpy floats, which on a 96/24 window is the difference between tens of
+    milliseconds and a second per item for the guided transforms. ``float64``
+    also matches what upstream accumulates in.
+    """
+    cost_np = cost.detach().cpu().numpy().astype(np.float64, copy=False)
+    p, s = cost_np.shape
+
+    dtw = np.full((p + 1, s + 1), np.inf)
     dtw[0, 0] = 0.0
 
     for i in range(1, p + 1):
         for j in range(max(1, i - window), min(s, i + window) + 1):
-            dtw[i, j] = cost[i - 1, j - 1] + torch.min(
-                torch.stack([dtw[i - 1, j - 1], dtw[i, j - 1], dtw[i - 1, j]])
+            dtw[i, j] = cost_np[i - 1, j - 1] + min(
+                dtw[i - 1, j - 1], dtw[i, j - 1], dtw[i - 1, j]
             )
     return dtw
 
 
-def _traceback(dtw: torch.Tensor):
+def _traceback(dtw: np.ndarray):
     """Walk an accumulated matrix back into an alignment path.
 
     Port of ``_traceback`` in ``thuml``'s ``dtw.py``, symmetric branch only.
+    The branch order reproduces ``argmin`` over ``(diagonal, up, left)``, which
+    takes the first minimum on a tie, as both torch and upstream numpy do.
     """
     i = dtw.shape[0] - 1
     j = dtw.shape[1] - 1
@@ -516,11 +579,12 @@ def _traceback(dtw: torch.Tensor):
     path_q = [j - 1]
 
     while i > 1 or j > 1:
-        step = torch.stack([dtw[i - 1, j - 1], dtw[i - 1, j], dtw[i, j - 1]])
-        choice = int(torch.argmin(step).item())
-        if choice == 0:
+        diagonal = dtw[i - 1, j - 1]
+        up = dtw[i - 1, j]
+        left = dtw[i, j - 1]
+        if diagonal <= up and diagonal <= left:
             i, j = i - 1, j - 1
-        elif choice == 1:
+        elif up <= left:
             i = i - 1
         else:
             j = j - 1
@@ -816,7 +880,12 @@ class Spawner(BaseAugmentation):
             out[key] = out[key] + noise
         return out
 
-    def transform(self, window, rng, neighbours=None):
+    def transform(
+        self,
+        window: dict,
+        rng: torch.Generator,
+        neighbours=None,
+    ) -> dict:
         _require_neighbours(neighbours, "Spawner")
         window_idx = _window_index(window, "Spawner")
 
@@ -888,7 +957,12 @@ class Wdba(BaseAugmentation):
         )
         return [neighbours.dataset._slice_window(i) for i in picked]
 
-    def transform(self, window, rng, neighbours=None):
+    def transform(
+        self,
+        window: dict,
+        rng: torch.Generator,
+        neighbours=None,
+    ) -> dict:
         _require_neighbours(neighbours, "Wdba")
         window_idx = _window_index(window, "Wdba")
 
@@ -999,7 +1073,12 @@ class RandomGuidedWarp(BaseAugmentation):
 
     _align = staticmethod(_dtw_path)
 
-    def transform(self, window, rng, neighbours=None):
+    def transform(
+        self,
+        window: dict,
+        rng: torch.Generator,
+        neighbours=None,
+    ) -> dict:
         name = type(self).__name__
         _require_neighbours(neighbours, name)
         window_idx = _window_index(window, name)
@@ -1100,7 +1179,12 @@ class DiscriminativeGuidedWarp(BaseAugmentation):
 
         return int(torch.argmax(scores).item())
 
-    def transform(self, window, rng, neighbours=None):
+    def transform(
+        self,
+        window: dict,
+        rng: torch.Generator,
+        neighbours=None,
+    ) -> dict:
         name = type(self).__name__
         _require_neighbours(neighbours, name)
         window_idx = _window_index(window, name)

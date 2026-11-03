@@ -64,6 +64,7 @@ See the detailed API documentation for the V2 data classes below:
    data.augmentation.DiscriminativeGuidedWarpShape
    data.augmentation.Jitter
    data.augmentation.MagnitudeWarp
+   data.augmentation.NeighbourIndex
    data.augmentation.Permutation
    data.augmentation.RandomGuidedWarp
    data.augmentation.RandomGuidedWarpShape

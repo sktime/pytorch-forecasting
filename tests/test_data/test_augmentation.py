@@ -8,13 +8,19 @@ import torch
 
 from pytorch_forecasting.data.augmentation import (
     BaseAugmentation,
+    DiscriminativeGuidedWarp,
+    DiscriminativeGuidedWarpShape,
     Jitter,
     MagnitudeWarp,
     NeighbourIndex,
     Permutation,
+    RandomGuidedWarp,
+    RandomGuidedWarpShape,
     Scaling,
     SignFlip,
+    Spawner,
     TimeWarp,
+    Wdba,
     WindowSlice,
     WindowWarp,
     _dtw_path,
@@ -478,7 +484,6 @@ def test_the_transforms_are_importable_from_the_data_package():
 def test_all_fourteen_transforms_are_importable():
     """Every transform in the set, reachable from the short path."""
     import pytorch_forecasting.data as pfd
-    from pytorch_forecasting.data import BaseAugmentation as Base
 
     names = [
         "Jitter",
@@ -498,7 +503,12 @@ def test_all_fourteen_transforms_are_importable():
     ]
     assert len(names) == 14
     for name in names:
-        assert issubclass(getattr(pfd, name), Base), name
+        assert issubclass(getattr(pfd, name), pfd.BaseAugmentation), name
+
+    # NeighbourIndex appears in the public transform signature, so the methods
+    # a user-written guided transform calls have to be reachable too.
+    for method in ("sample", "sample_index", "sample_other_label_index", "as_array"):
+        assert callable(getattr(pfd.NeighbourIndex, method)), method
 
 
 class _NeedsNeighbours(BaseAugmentation):
@@ -730,33 +740,29 @@ def test_shape_dtw_differs_from_pointwise_dtw():
 
 
 GUIDED = [
-    "Spawner",
-    "Wdba",
-    "RandomGuidedWarp",
-    "RandomGuidedWarpShape",
-    "DiscriminativeGuidedWarp",
-    "DiscriminativeGuidedWarpShape",
+    Spawner,
+    Wdba,
+    RandomGuidedWarp,
+    RandomGuidedWarpShape,
+    DiscriminativeGuidedWarp,
+    DiscriminativeGuidedWarpShape,
 ]
 
 
-@pytest.mark.parametrize("name", GUIDED)
-def test_guided_transform_declares_its_tags(name):
-    import pytorch_forecasting.data.augmentation as aug
-
-    tags = getattr(aug, name)().get_class_tags()
+@pytest.mark.parametrize("cls", GUIDED, ids=lambda c: c.__name__)
+def test_guided_transform_declares_its_tags(cls):
+    tags = cls().get_class_tags()
     assert tags["requires_neighbours"] is True
     assert tags["touches_time_axis"] is True
 
 
-@pytest.mark.parametrize("name", GUIDED)
-def test_guided_transform_runs_end_to_end_in_the_data_module(name):
+@pytest.mark.parametrize("cls", GUIDED, ids=lambda c: c.__name__)
+def test_guided_transform_runs_end_to_end_in_the_data_module(cls):
     """The real check: it works through the data module with a real pool."""
-    import pytorch_forecasting.data.augmentation as aug
-
     dm = _make_labelled_dm(
         n_per_label=5,
         n_labels=2,
-        augmentation=getattr(aug, name)(),
+        augmentation=cls(),
         augmentation_label="label",
     )
     dm.setup(stage="fit")
@@ -769,16 +775,14 @@ def test_guided_transform_runs_end_to_end_in_the_data_module(name):
     assert torch.isfinite(x["history_target"]).all()
 
 
-@pytest.mark.parametrize("name", GUIDED)
-def test_guided_transform_needs_a_neighbour_index(name):
+@pytest.mark.parametrize("cls", GUIDED, ids=lambda c: c.__name__)
+def test_guided_transform_needs_a_neighbour_index(cls):
     """Called bare, with no pool, it must fail loudly rather than no-op."""
-    import pytorch_forecasting.data.augmentation as aug
-
     window = _window(ctx=16, pred=8)
     rng = torch.Generator().manual_seed(0)
 
     with pytest.raises((ValueError, AssertionError, AttributeError)):
-        getattr(aug, name)().transform(window, rng, neighbours=None)
+        cls().transform(window, rng, neighbours=None)
 
 
 def test_training_runs_with_augmentation_and_val_stays_clean():
