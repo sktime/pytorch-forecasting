@@ -52,7 +52,7 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
         The input data. If ``None``, the module is a configuration only: it carries
         its parameters, and data is attached later with
         :meth:`with_data`, which reuses any transforms already fitted here.
-    max_encoder_length : int, default=30
+    max_encoder_length : int, default=32
         Maximum length of the encoder input sequence.
     min_encoder_length : Optional[int], default=None
         Minimum length of the encoder input sequence.
@@ -120,7 +120,7 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
     def __init__(
         self,
         time_series: TimeSeries | None = None,
-        max_encoder_length: int = 30,
+        max_encoder_length: int = 32,
         min_encoder_length: int | None = None,
         max_prediction_length: int = 1,
         min_prediction_length: int | None = None,
