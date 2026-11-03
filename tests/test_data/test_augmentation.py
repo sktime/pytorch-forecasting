@@ -798,7 +798,7 @@ def test_training_runs_with_augmentation_and_val_stays_clean():
     dm = _make_dm(n_series=10, augmentation=[Jitter(), TimeWarp()])
     dm.setup(stage="fit")
 
-    batch_x, batch_y = next(iter(dm.train_dataloader()))
+    batch_x, _ = next(iter(dm.train_dataloader()))
     assert torch.isfinite(batch_x["history_cont"]).all()
     assert batch_x["history_cont"].shape[0] == dm.batch_size
 
@@ -810,6 +810,18 @@ def test_training_runs_with_augmentation_and_val_stays_clean():
 
 
 def test_seed_everything_makes_augmentation_reproducible():
+    """``seed_everything`` makes a whole augmented epoch reproducible.
+
+    This covers single-process reproducibility only. It does **not** pin the
+    per-worker seeding that ``_TslibDataset.rng`` is lazy for: with
+    ``num_workers=0`` there is no fork boundary, so ``torch.initial_seed()``
+    returns the same value whether the generator is built lazily or eagerly,
+    and this test would pass either way. Covering that properly needs
+    ``num_workers > 0``, which is a well known source of intermittent CI
+    failures across the three platforms this repository tests on, so the
+    laziness is argued from the Lightning worker-seeding contract rather than
+    pinned by a test here.
+    """
     from lightning.pytorch import seed_everything
 
     def first_batch():
