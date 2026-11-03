@@ -779,3 +779,44 @@ def test_guided_transform_needs_a_neighbour_index(name):
 
     with pytest.raises((ValueError, AssertionError, AttributeError)):
         getattr(aug, name)().transform(window, rng, neighbours=None)
+
+
+def test_training_runs_with_augmentation_and_val_stays_clean():
+    """A real fit loop: augmentation must not break collation or the model.
+
+    ``n_series=10`` is deliberate: with the module's (0.7, 0.15, 0.15) split,
+    ``val_size = int(0.15 * n_series)`` is a fixed count that does not depend
+    on which series the random permutation picks. The default ``n_series=6``
+    used elsewhere in this file gives ``val_size == 0`` for every draw, which
+    would make ``val_dataloader()`` raise ``StopIteration`` regardless of
+    augmentation. ``n_series=10`` gives exactly one validation series for
+    every draw.
+    """
+    from lightning.pytorch import seed_everything
+
+    seed_everything(0)
+    dm = _make_dm(n_series=10, augmentation=[Jitter(), TimeWarp()])
+    dm.setup(stage="fit")
+
+    batch_x, batch_y = next(iter(dm.train_dataloader()))
+    assert torch.isfinite(batch_x["history_cont"]).all()
+    assert batch_x["history_cont"].shape[0] == dm.batch_size
+
+    val_x, _ = next(iter(dm.val_dataloader()))
+    plain = _make_dm(n_series=10)
+    plain.setup(stage="fit")
+    plain_val_x, _ = next(iter(plain.val_dataloader()))
+    assert torch.equal(val_x["history_cont"], plain_val_x["history_cont"])
+
+
+def test_seed_everything_makes_augmentation_reproducible():
+    from lightning.pytorch import seed_everything
+
+    def first_batch():
+        seed_everything(123)
+        dm = _make_dm(augmentation=Jitter(), num_workers=0)
+        dm.setup(stage="fit")
+        x, _ = next(iter(dm.train_dataloader()))
+        return x["history_cont"]
+
+    assert torch.equal(first_batch(), first_batch())
