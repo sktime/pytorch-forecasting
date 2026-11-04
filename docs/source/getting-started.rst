@@ -144,3 +144,4 @@ Main API
 
     API v1 <api>
     API v2 <api_v2>
+    Migration guide <migration-v1-v2>

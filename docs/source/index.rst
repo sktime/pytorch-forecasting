@@ -67,6 +67,7 @@ The :ref:`Tutorials <tutorials>` section provides guidance on how to use models 
    :maxdepth: 6
 
    getting-started
+   migration-v1-v2
    tutorials
    data
    models
