@@ -100,6 +100,8 @@ class _TslibDataset(Dataset):
                 Time indices for the encoder sequence.
             * ``future_time_idx`` : torch.Tensor of shape (prediction_length,)
                 Time indices for the decoder sequence.
+            * ``prediction_start_idx`` : torch.Tensor of shape (1,)
+                First position within the series that the future window predicts.
             * ``history_target`` : torch.Tensor of shape (context_length,)
                 Historical target values for the encoder sequence.
             * ``future_target`` : torch.Tensor of shape (prediction_length,)
@@ -142,6 +144,8 @@ class _TslibDataset(Dataset):
         end_idx = start_idx + context_length + prediction_length
         history_indices = slice(start_idx, start_idx + context_length)
         future_indices = slice(start_idx + context_length, end_idx)
+
+        positions = torch.arange(processed_data["target"].shape[0])
 
         metadata = self.data_module.metadata
 
@@ -207,6 +211,7 @@ class _TslibDataset(Dataset):
             "groups": processed_data["group"],
             "history_time_idx": history_time_idx,
             "future_time_idx": future_time_idx,
+            "prediction_start_idx": positions[future_indices][:1],
             "history_target": history_target,
             "future_target": future_target,
             "future_target_len": torch.tensor(prediction_length),
@@ -881,6 +886,9 @@ class TslibDataModule(LightningDataModule):
             "groups": torch.stack([x["groups"] for x, _ in batch]),
             "history_time_idx": torch.stack([x["history_time_idx"] for x, _ in batch]),
             "future_time_idx": torch.stack([x["future_time_idx"] for x, _ in batch]),
+            "prediction_start_idx": torch.stack(
+                [x["prediction_start_idx"] for x, _ in batch]
+            ),
             "history_target": torch.stack([x["history_target"] for x, _ in batch]),
             "future_target": torch.stack([x["future_target"] for x, _ in batch]),
             "future_target_len": torch.stack(
