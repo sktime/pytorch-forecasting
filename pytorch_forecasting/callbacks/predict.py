@@ -7,6 +7,53 @@ from lightning.pytorch.callbacks import BasePredictionWriter
 import torch
 
 from pytorch_forecasting.utils import detach, move_to_device
+from pytorch_forecasting.utils._validation import (
+    _check_choice,
+    _check_choices,
+    _check_type,
+)
+
+_VALID_MODES = ("prediction", "quantiles", "raw")
+_VALID_RETURN_INFO = ("x", "y", "index", "decoder_lengths")
+
+
+def _check_predict_args(mode: str, return_info: Any) -> list[str]:
+    """Validate the ``mode`` and ``return_info`` arguments of ``predict``.
+
+    Parameters
+    ----------
+    mode : str
+        The prediction mode, one of ``"prediction"``, ``"quantiles"``, ``"raw"``.
+    return_info : list of str, tuple of str, str or None
+        The extra outputs to return. A single string is treated as a list with
+        one entry.
+
+    Returns
+    -------
+    list of str
+        ``return_info`` as a new list, empty if it was ``None``.
+
+    Raises
+    ------
+    ValueError
+        If ``mode`` or an entry of ``return_info`` is not a valid option.
+    TypeError
+        If ``return_info`` is not a list, tuple, string or ``None``.
+    """
+    _check_choice(mode, _VALID_MODES, "mode")
+
+    if isinstance(return_info, str):
+        return_info = [return_info]
+    _check_type(
+        return_info,
+        (list, tuple),
+        "return_info",
+        allow_none=True,
+        hint="Pass a list of keys, e.g. `return_info=['index']`.",
+    )
+    return_info = list(return_info or [])
+    _check_choices(return_info, _VALID_RETURN_INFO, "return_info")
+    return return_info
 
 
 class PredictCallback(BasePredictionWriter):
@@ -23,20 +70,31 @@ class PredictCallback(BasePredictionWriter):
     mode : str
         The prediction mode ("prediction", "quantiles", or "raw").
     return_info : list[str], optional
-        Additional information to return.
+        Additional information to return. Valid entries are ``"x"``, ``"y"``,
+        ``"index"`` and ``"decoder_lengths"``. A single string is treated as a
+        list with one entry.
     **kwargs :
         Additional keyword arguments for `to_prediction` or `to_quantiles`.
+
+    Raises
+    ------
+    ValueError
+        If ``mode`` or an entry of ``return_info`` is not one of the valid
+        options. The check runs on construction, before any prediction.
+    TypeError
+        If ``return_info`` is not a list, tuple, string or ``None``.
     """
 
     def __init__(
         self,
         mode: str = "prediction",
-        return_info: list[str] | None = None,
+        return_info: list[str] | str | None = None,
         mode_kwargs: dict[str, Any] = None,
     ):
+        return_info = _check_predict_args(mode, return_info)
         super().__init__(write_interval="epoch")
         self.mode = mode
-        self.return_info = return_info or []
+        self.return_info = return_info
         self.mode_kwargs = mode_kwargs or {}
         self._reset_data()
 

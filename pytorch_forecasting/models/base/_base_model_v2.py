@@ -127,7 +127,7 @@ class BaseModel(LightningModule):
         self,
         dataloader: DataLoader,
         mode: str = "prediction",
-        return_info: list[str] | None = None,
+        return_info: list[str] | str | None = None,
         mode_kwargs: dict[str, Any] = None,
         trainer_kwargs: dict[str, Any] = None,
     ) -> dict[str, torch.Tensor]:
@@ -141,27 +141,37 @@ class BaseModel(LightningModule):
         mode : str
             The prediction mode ("prediction", "quantiles", or "raw").
         return_info : list[str], optional
-            A list of additional information to return.
+            A list of additional information to return, any of ``"x"``,
+            ``"y"``, ``"index"`` and ``"decoder_lengths"``.
         mode_kwargs : dict[str, Any]
             Additional arguments for `to_prediction`/`to_quantiles`.
         trainer_kwargs: dict[str, Any]
-            Additional arguments for `Trainer`.
+            Additional arguments for `Trainer`. The dict and any ``callbacks``
+            list in it are not modified.
 
         Returns
         -------
         dict[str, torch.Tensor]
             A dictionary of prediction results.
+
+        Raises
+        ------
+        ValueError
+            If ``mode`` or an entry of ``return_info`` is not a valid option.
+            Raised before any batch is predicted.
         """
-        trainer_kwargs = trainer_kwargs or {}
         predict_callback = PredictCallback(
             mode=mode, return_info=return_info, mode_kwargs=mode_kwargs
         )
 
-        callbacks = trainer_kwargs.get("callbacks", [])
-        if not isinstance(callbacks, list):
+        # work on copies, so the dict and callbacks list of the caller stay unchanged
+        trainer_kwargs = dict(trainer_kwargs or {})
+        callbacks = trainer_kwargs.get("callbacks") or []
+        if isinstance(callbacks, (list, tuple)):
+            callbacks = list(callbacks)
+        else:
             callbacks = [callbacks]
-        callbacks.append(predict_callback)
-        trainer_kwargs["callbacks"] = callbacks
+        trainer_kwargs["callbacks"] = [*callbacks, predict_callback]
 
         trainer = Trainer(**trainer_kwargs)
         trainer.predict(self, dataloaders=dataloader)
