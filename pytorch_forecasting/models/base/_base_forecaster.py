@@ -1,7 +1,7 @@
 import inspect
 from pathlib import Path
 import pickle
-from typing import Any, Optional, Union
+from typing import Any
 
 from lightning import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint, ModelSummary
