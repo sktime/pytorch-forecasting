@@ -1,4 +1,6 @@
+from dataclasses import replace
 import inspect
+import itertools
 from pathlib import Path
 import pickle
 from typing import Any, Optional, Union
@@ -7,8 +9,8 @@ from lightning import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint, ModelSummary
 from lightning.pytorch.core.datamodule import LightningDataModule
 import numpy as np
+import pandas as pd
 import torch
-from torch.utils.data import DataLoader
 import yaml
 
 from pytorch_forecasting.data import TimeSeries
@@ -197,20 +199,68 @@ class BaseForecaster(_BasePtObject_v2):
             return Trainer()
         return _clone_trainer(self.trainer)
 
-    def _load_dataloader(self, data: TimeSeries) -> DataLoader:
-        """Build the prediction dataloader, with the transforms fitted in ``fit``."""
+    def _load_datamodule(self, data: TimeSeries) -> LightningDataModule:
+        """Build the prediction datamodule, with the transforms fitted in ``fit``."""
         if self._is_fitted:
             dm = self.datamodule_.with_data(data)
         else:
             dm = self._build_datamodule(data)
         dm.setup(stage="predict")
-        return dm.predict_dataloader()
+        return dm
+
+    @staticmethod
+    def _window_index(
+        data: TimeSeries, windows: list, series_times: dict[int, np.ndarray]
+    ) -> pd.DataFrame:
+        """Label each forecast step of ``windows`` with its group and time.
+
+        Parameters
+        ----------
+        data : TimeSeries
+            The data predicted on.
+        windows : list of tuple
+            One entry per window, ``(series_idx, start_idx, encoder_length,
+            prediction_length)``, as recorded by the prediction dataset.
+        series_times : dict of int to np.ndarray
+            Time axis of each series, as recorded by the datamodule.
+
+        Returns
+        -------
+        pd.DataFrame
+            ``n_windows * prediction_length`` rows, with the group columns of
+            ``data``, its time column, and ``<time>_origin``, the last encoder
+            time of the window.
+        """
+        group, time = data._group, data._time
+        keys = [k if isinstance(k, tuple) else (k,) for k in data._group_ids]
+        per_series = [series_times[s] for s in range(len(data))]
+        times = np.concatenate(per_series)
+        offsets = np.cumsum([0] + [len(t) for t in per_series])
+
+        w = np.fromiter(
+            itertools.chain.from_iterable(windows),
+            dtype=np.int64,
+            count=4 * len(windows),
+        ).reshape(-1, 4)
+        pred_len = w[0, 3]
+        first = offsets[w[:, 0]] + w[:, 1] + w[:, 2]
+        rows = np.repeat(w[:, 0], pred_len)
+        if group:
+            index = pd.DataFrame(keys, columns=group).iloc[rows]
+            index = index.reset_index(drop=True)
+        else:
+            index = pd.DataFrame(index=range(len(rows)))
+        index[time] = times[(first[:, None] + np.arange(pred_len)).reshape(-1)]
+        index[f"{time}_origin"] = np.repeat(times[first - 1], pred_len)
+        return index
 
     @staticmethod
     def _to_timeseries(
         y: torch.Tensor | list[torch.Tensor],
-        windows: list | None,
-        metadata: Any | None,
+        index: pd.DataFrame,
+        time: str,
+        group: list[str],
+        metadata: Any,
         info: dict | None = None,
         label_targets: bool = True,
     ) -> TimeSeries:
@@ -219,14 +269,15 @@ class BaseForecaster(_BasePtObject_v2):
         Parameters
         ----------
         y : torch.Tensor or list of torch.Tensor
-            Model output tensor.
-        windows : list of tuple, optional
-            One entry per window, ``(series_idx, start_idx, encoder_length,
-            prediction_length)``, as recorded by the prediction dataset. Used
-            to label each row with its source series and time position. If
-            ``None`` or its length differs from ``n_windows``, each window is
-            labelled as its own series with a horizon-local time index.
-        metadata : TimeSeriesMetadata or dict, optional
+            Model output tensor, in the space of the original target.
+        index : pd.DataFrame
+            As returned by ``_window_index``, one row per forecast step. Used
+            as the frame of the result.
+        time : str
+            Name of the time column of the input data.
+        group : list of str
+            Names of the group columns of the input data.
+        metadata : TimeSeriesMetadata or dict
             Schema of the input data. Only ``metadata["cols"]["y"]`` is read,
             to name the output columns and the actual-value columns.
         info : dict, optional
@@ -242,41 +293,42 @@ class BaseForecaster(_BasePtObject_v2):
             ``n_windows * prediction_length`` rows, one per forecast step, with
             ``metadata.is_prediction=True`` and columns:
 
-            * ``_series`` : index of the source series (``series_idx`` of the
-              window), also the ``group`` of the ``TimeSeries``.
-            * ``_time_idx`` : position in that series,
+            * the group columns of the input data, also the ``group`` of the
+              ``TimeSeries``.
+            * the time column of the input data, with the time of the step.
             * one column per output, the targets of the ``TimeSeries``. Named
-              after the targets in point mode when ``metadata`` is given, else
-              ``y0, y1, ...``. With several targets and quantile outputs the
-              columns are target-major, i.e. all quantiles of target 0, then
-              all quantiles of target 1.
+              after the targets in point mode, else ``y0, y1, ...``. With
+              several targets and quantile outputs the columns are
+              target-major, i.e. all quantiles of target 0, then all quantiles
+              of target 1.
+            * ``<time>_origin`` : the last encoder time of the window. Windows
+              overlap, so a step can be forecast from several origins.
             * one ``<target>_actual`` column per target if ``info`` holds
-              ``"y"``. These are not part of the schema, only of the frame.
+              ``"y"``.
 
-            Values are in the space of the fitted target normalizer.
+            The origin and actual columns are not part of the schema, only of
+            the frame.
         """
         if isinstance(y, (list, tuple)):
             y = torch.stack(list(y), dim=2)
         n_windows, pred_len = y.shape[:2]
+        y = y.reshape(n_windows * pred_len, -1).numpy()
 
-        if windows is None or len(windows) != n_windows:
-            series = np.repeat(np.arange(n_windows), pred_len)
-            t = np.tile(np.arange(pred_len), n_windows)
-        else:
-            series = np.repeat([w[0] for w in windows], pred_len)
-            t = np.concatenate(
-                [np.arange(s + enc, s + enc + pred_len) for _, s, enc, _ in windows]
-            )
+        target = list(metadata["cols"]["y"])
+        if not label_targets or len(target) != y.shape[1]:
+            target = [f"y{i}" for i in range(y.shape[1])]
+
+        origin = index.pop(f"{time}_origin")
+        for i, col in enumerate(target):
+            index[col] = y[:, i]
 
         info = dict(info or {})
         y_true = info.pop("y", None)
-        ts = TimeSeries.from_tensors(
-            {"y": y.reshape(n_windows * pred_len, -1), "t": torch.as_tensor(t)},
-            metadata=metadata if label_targets else None,
-            groups=series,
-            info=info,
-        )
-        if y_true is not None and metadata is not None:
+        ts = TimeSeries(index, time=time, target=target, group=group or None)
+        ts.metadata = replace(ts.metadata, is_prediction=True)
+        ts.info = info
+        ts.data[f"{time}_origin"] = origin.to_numpy()
+        if y_true is not None:
             if isinstance(y_true, (list, tuple)):
                 y_true = torch.stack(list(y_true), dim=-1)
             y_true = y_true.reshape(n_windows * pred_len, -1).numpy()
@@ -402,26 +454,31 @@ class BaseForecaster(_BasePtObject_v2):
             with ``metadata.is_prediction=True``, one row per forecast step and
             the ``return_info`` outputs in its ``info`` dict, except ``"y"``,
             which becomes one ``<target>_actual`` column per target in the
-            frame. For ``mode="raw"``, the model's dict.
-
-            Values are in the space of the fitted target normalizer; no inverse
-            transform is applied yet.
+            frame. Values are in the space of the original target. For
+            ``mode="raw"``, the model's dict, in the space of the fitted target
+            normalizer.
         """
         if self.model is None:
             raise RuntimeError(
                 "Model is not initialized. Call `fit` or pass `ckpt_path`."
             )
 
-        dataloader = self._load_dataloader(data)
+        dm = self._load_datamodule(data)
         predictions = self.model.predict(
-            dataloader, mode=mode, return_info=return_info, **kwargs
+            dm.predict_dataloader(), mode=mode, return_info=return_info, **kwargs
         )
         if mode != "raw":
+            windows = dm.predict_windows
+            info = {k: v for k, v in predictions.items() if k != "prediction"}
+            if "y" in info:
+                info["y"] = dm.inverse_transform_target(info["y"], windows)
             predictions = self._to_timeseries(
-                predictions["prediction"],
-                windows=getattr(dataloader.dataset, "windows", None),
+                dm.inverse_transform_target(predictions["prediction"], windows),
+                index=self._window_index(data, windows, dm.series_times),
+                time=data._time,
+                group=data._group,
                 metadata=data.get_metadata(),
-                info={k: v for k, v in predictions.items() if k != "prediction"},
+                info=info,
                 label_targets=mode == "prediction",
             )
 
