@@ -11,7 +11,9 @@ class QuantileLoss(MultiHorizonMetric):
     """
     Quantile loss, i.e. a quantile of ``q=0.5`` will give half of the mean absolute error as it is calculated as
 
-    Defined as ``max(q * (y-y_pred), (1-q) * (y_pred-y))``
+    Defined as ``2 * max(q * (y-y_pred), (1-q) * (y_pred-y))``
+
+    Which is mathematically equivalent to ``2 * (q * (y-y_pred) + (|y-y_pred| - (y-y_pred))/2)``
     """  # noqa: E501
 
     def __init__(
@@ -33,12 +35,14 @@ class QuantileLoss(MultiHorizonMetric):
 
     def loss(self, y_pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         # calculate quantile loss
-        losses = []
-        for i, q in enumerate(self.quantiles):
-            errors = target - y_pred[..., i]
-            losses.append(torch.max((q - 1) * errors, q * errors).unsqueeze(-1))
-        losses = 2 * torch.cat(losses, dim=2)
-
+        target = target.unsqueeze(-1)
+        errors = target - y_pred
+        q = torch.as_tensor(
+            self.quantiles,
+            device=y_pred.device,
+            dtype=y_pred.dtype,
+        )
+        losses = 2 * (errors * q + (torch.abs(errors) - errors) / 2)
         return losses
 
     def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
