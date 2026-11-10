@@ -308,6 +308,47 @@ def test_pickle(model):
     pickle.loads(pkl)  # noqa: S301
 
 
+def test_load_gpu_trained_checkpoint_on_cpu(dataloaders_with_covariates, tmp_path):
+    """Test loading a checkpoint of a GPU-trained model with map_location="cpu".
+
+    Loss and logging metrics are pickled into the checkpoint, including the device
+    torchmetrics stores in their ``_device`` attribute, see #1754 and #1292.
+    Training on GPU is emulated by setting this attribute, so that the test does
+    not require a GPU.
+    """
+    train_dataloader = dataloaders_with_covariates["train"]
+    net = TemporalFusionTransformer.from_dataset(
+        train_dataloader.dataset,
+        hidden_size=4,
+        attention_head_size=1,
+        hidden_continuous_size=2,
+    )
+    trainer = pl.Trainer(
+        max_steps=1,
+        accelerator="cpu",
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+        enable_model_summary=False,
+    )
+    trainer.fit(net, train_dataloaders=train_dataloader)
+
+    # state of the metrics after training on GPU
+    for metric in [net.loss, *net.logging_metrics]:
+        metric._device = torch.device("cuda", 0)
+    path = tmp_path / "model.ckpt"
+    trainer.save_checkpoint(path)
+
+    net = TemporalFusionTransformer.load_from_checkpoint(path, map_location="cpu")
+    for metric in [net.loss, *net.logging_metrics]:
+        assert metric.device == torch.device("cpu")
+    net.predict(
+        dataloaders_with_covariates["val"],
+        fast_dev_run=True,
+        trainer_kwargs=dict(accelerator="cpu"),
+    )
+
+
 @pytest.mark.parametrize(
     "kwargs", [dict(mode="dataframe"), dict(mode="series"), dict(mode="raw")]
 )

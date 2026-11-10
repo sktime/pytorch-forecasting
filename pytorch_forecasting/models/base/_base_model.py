@@ -27,6 +27,7 @@ import torch.nn as nn
 from torch.nn.utils import rnn
 from torch.optim.lr_scheduler import LambdaLR, ReduceLROnPlateau
 from torch.utils.data import DataLoader
+from torchmetrics import Metric as LightningMetric
 from tqdm.autonotebook import tqdm
 import yaml
 
@@ -1577,8 +1578,26 @@ class BaseModel(InitialParameterRepresenterMixIn, LightningModule, TupleOutputMi
 
     def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         self.dataset_parameters = checkpoint.get("dataset_parameters", None)
+        # Metrics such as ``loss`` and ``logging_metrics`` are restored from the
+        # pickled specials, including the device torchmetrics stores in their
+        # ``_device`` attribute. ``map_location`` only remaps tensors, so a model
+        # trained on GPU could not be moved to CPU on a machine without CUDA,
+        # see #1754. Hence, set the device of the restored metrics to the device
+        # the checkpoint tensors were loaded to.
+        device = next(
+            (
+                t.device
+                for t in checkpoint.get("state_dict", {}).values()
+                if isinstance(t, torch.Tensor)
+            ),
+            torch.device("cpu"),
+        )
         # load specials
         for k, v in checkpoint[self.CHECKPOINT_HYPER_PARAMS_SPECIAL_KEY].items():
+            if isinstance(v, nn.Module):
+                for module in v.modules():
+                    if isinstance(module, LightningMetric):
+                        module._device = device
             setattr(self, k, v)
 
     def to_prediction(self, out: dict[str, Any], use_metric: bool = True, **kwargs):
