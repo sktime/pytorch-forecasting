@@ -5,7 +5,7 @@ P Layer (Package)
    **Try the API v2 pre-release!**
 
    | You are viewing Documentation of v1 Package Layer. A New API version 2 is in development.
-   | Try it out before release: :doc:`v2 Package Layer <pkg_v2>` | :doc:`v2 API Reference <api_v2>`
+   | Try it out before release: :doc:`v2 Forecaster Layer <forecaster_v2>` | :doc:`v2 API Reference <api_v2>`
    | **Caution: v2 is WIP and unstable. Not yet production-ready.**
 
 .. currentmodule:: pytorch_forecasting
