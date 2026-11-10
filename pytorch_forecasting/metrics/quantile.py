@@ -42,7 +42,7 @@ class QuantileLoss(MultiHorizonMetric):
             device=y_pred.device,
             dtype=y_pred.dtype,
         )
-        losses = 2 * (errors * q + (torch.abs(errors) - errors) / 2)
+        losses = 2 * (errors * q - torch.minimum(errors, errors.new_zeros(())))
         return losses
 
     def to_prediction(self, y_pred: torch.Tensor) -> torch.Tensor:
