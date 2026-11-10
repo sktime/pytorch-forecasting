@@ -1406,7 +1406,8 @@ class TimeSeriesDataSet(Dataset):
                 return transform(values, **kwargs)
             else:
                 if isinstance(values, pd.Series):
-                    values = values.to_frame()
+                    # lagged variables use the scaler fitted on the original column
+                    values = values.to_frame(name=self.lagged_variables.get(name, name))
                     return np.asarray(transform(values, **kwargs)).reshape(-1)
                 else:
                     values = values.reshape(-1, 1)
