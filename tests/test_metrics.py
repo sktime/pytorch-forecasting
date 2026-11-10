@@ -6,6 +6,7 @@ import pytest
 from skbase.utils.dependencies import _check_soft_dependencies
 import torch
 from torch.nn.utils import rnn
+from torchmetrics.regression import MeanAbsoluteError as TorchMeanAbsoluteError
 
 from pytorch_forecasting import TemporalFusionTransformer, TimeSeriesDataSet
 from pytorch_forecasting.data import NaNLabelEncoder
@@ -16,6 +17,7 @@ from pytorch_forecasting.metrics import (
     BetaDistributionLoss,
     ImplicitQuantileNetworkDistributionLoss,
     LogNormalDistributionLoss,
+    MultiLoss,
     MultivariateNormalDistributionLoss,
     NegativeBinomialDistributionLoss,
     NormalDistributionLoss,
@@ -24,6 +26,7 @@ from pytorch_forecasting.metrics import (
 from pytorch_forecasting.metrics.base_metrics import (
     AggregationMetric,
     CompositeMetric,
+    coerce_to_pytorch_forecasting_metric,
 )
 
 
@@ -615,3 +618,79 @@ def test_composite_metric_immutability():
     assert base is not rscaled
     assert base._weights == original_weights
     assert rscaled._weights == [w * 3.0 for w in original_weights]
+
+
+@pytest.mark.parametrize("metric_class", [MultiLoss, CompositeMetric])
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+@pytest.mark.parametrize("populated", [False, True])
+@pytest.mark.parametrize("initial_dtype", [torch.float32, torch.float64])
+def test_composed_metric_set_dtype(dtype, populated, initial_dtype, metric_class):
+    metrics = [MAE().set_dtype(initial_dtype), MAE().set_dtype(initial_dtype)]
+    combined = metric_class(metrics, weights=[0.25, 2.0])
+    prediction = torch.tensor([[2.0, 4.0]], dtype=initial_dtype)
+    target = torch.tensor([[1.0, 1.0]], dtype=initial_dtype)
+    if populated:
+        if metric_class is MultiLoss:
+            combined.update([prediction, prediction], ([target, target], None))
+        else:
+            combined.update(prediction, target)
+        torch.testing.assert_close(
+            combined.compute(), torch.tensor(4.5, dtype=initial_dtype)
+        )
+
+    assert combined.set_dtype(dtype) is combined
+    assert combined.dtype == dtype
+    for metric in metrics:
+        assert metric.dtype == dtype
+        assert metric.losses.dtype == dtype
+        assert metric._defaults["losses"].dtype == dtype
+        assert metric.lengths.dtype == dtype
+    if populated:
+        torch.testing.assert_close(combined.compute(), torch.tensor(4.5, dtype=dtype))
+    combined.reset()
+    for metric in metrics:
+        assert metric.losses.dtype == dtype
+
+
+def test_multiloss_set_dtype_adapted_loss():
+    combined = MultiLoss([torch.nn.MSELoss(), MAE()])
+    assert combined.set_dtype("torch.DoubleTensor") is combined
+    assert all(metric.dtype == torch.float64 for metric in combined)
+    prediction = torch.tensor([[2.0, 4.0]], dtype=torch.float64, requires_grad=True)
+    target = torch.tensor([[1.0, 1.0]], dtype=torch.float64)
+    result = combined([prediction, prediction], ([target, target], None))
+    torch.testing.assert_close(result, torch.tensor(7.0, dtype=torch.float64))
+    result.backward()
+    torch.testing.assert_close(
+        prediction.grad, torch.tensor([[1.5, 3.5]], dtype=torch.float64)
+    )
+    combined.reset()
+    assert all(metric.losses.dtype == torch.float64 for metric in combined)
+
+
+@pytest.mark.parametrize("metric_class", [MultiLoss, CompositeMetric])
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+@pytest.mark.parametrize("populated", [False, True])
+def test_composed_metric_set_dtype_wrapped_torchmetric(metric_class, dtype, populated):
+    inner = TorchMeanAbsoluteError()
+    wrapped = coerce_to_pytorch_forecasting_metric(inner)
+    combined = metric_class([wrapped, MAE()])
+    prediction = torch.tensor([[2.0, 4.0]])
+    target = torch.tensor([[1.0, 1.0]])
+    if populated:
+        if metric_class is MultiLoss:
+            combined.update([prediction, prediction], ([target, target], None))
+        else:
+            combined.update(prediction, target)
+        torch.testing.assert_close(combined.compute(), torch.tensor(4.0))
+    assert combined.set_dtype(dtype) is combined
+    assert wrapped.dtype == dtype
+    assert inner.dtype == dtype
+    assert inner.sum_abs_error.dtype == dtype
+    assert inner._defaults["sum_abs_error"].dtype == dtype
+    if populated:
+        torch.testing.assert_close(combined.compute(), torch.tensor(4.0, dtype=dtype))
+    combined.reset()
+    torch.testing.assert_close(
+        inner.sum_abs_error, torch.zeros_like(inner.sum_abs_error, dtype=dtype)
+    )
