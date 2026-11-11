@@ -1,9 +1,10 @@
+from unittest.mock import MagicMock
 import warnings
 
 import pytest
 import torch
 
-from pytorch_forecasting.metrics import MAE
+from pytorch_forecasting.metrics import MAE, MultiLoss, QuantileLoss
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
@@ -122,3 +123,52 @@ def test_optimizer_instance():
     model.optimizer = opt
     cfg = model.configure_optimizers()
     assert cfg["optimizer"] is opt
+
+
+# --- multiloss tests ---
+
+
+def test_multi_loss_predictions():
+    """Test MultiLoss support in to_prediction and to_quantiles."""
+    # QuantileLoss defaults to 7 quantiles: [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
+    loss = MultiLoss([MAE(), QuantileLoss()])
+    model = _make_model(loss=loss)
+
+    # Mock output
+    out = {
+        "prediction": [
+            torch.tensor([[1.0, 2.0], [3.0, 4.0]]),
+            torch.rand(1, 2, 7),  # batch=1, seq_len=2, quantiles=7
+        ]
+    }
+
+    # Test to_prediction
+    preds = model.to_prediction(out)
+    assert isinstance(preds, list)
+    assert len(preds) == 2
+    assert preds[0].shape == out["prediction"][0].shape
+
+    # Test to_quantiles
+    quantiles = model.to_quantiles(out)
+    assert isinstance(quantiles, list)
+    assert len(quantiles) == 2
+
+
+def test_multi_loss_log_metrics():
+    """Test MultiLoss support in log_metrics."""
+    loss = MultiLoss([MAE(), MAE()])
+    model = _make_model(loss=loss, logging_metrics=[MAE()])
+    model.log = MagicMock()
+    model.target_names = ["Target1", "Target2"]
+
+    # MAE expects tensors to have shape (batch_size, sequence_length)
+    y_hat = [torch.tensor([[1.0]]), torch.tensor([[2.0]])]
+    y = [torch.tensor([[1.0]]), torch.tensor([[2.0]])]
+
+    model.log_metrics(y_hat, y, prefix="test")
+
+    assert model.log.call_count == 2
+    # Ensure tags are added properly
+    calls = model.log.call_args_list
+    assert "test_Target1_MAE" == calls[0][0][0]
+    assert "test_Target2_MAE" == calls[1][0][0]
