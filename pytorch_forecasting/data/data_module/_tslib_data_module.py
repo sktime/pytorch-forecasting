@@ -426,15 +426,8 @@ class TslibDataModule(LightningDataModule):
             - features: str
                 Feature combination mode.
         """
-        if hasattr(self.time_series_dataset, "get_metadata"):
-            ds_metadata = self.time_series_dataset.get_metadata()
-        else:
-            ds_metadata = {
-                "categorical": [],
-                "continuous": [],
-                "static": [],
-                "known": [],
-            }
+        ds_metadata = self.time_series_metadata
+
         feature_names = {
             "categorical": [],
             "continuous": [],
