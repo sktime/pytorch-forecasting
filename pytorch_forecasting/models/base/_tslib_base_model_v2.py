@@ -58,6 +58,7 @@ class TslibBaseModel(BaseModel):
         )
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
         self.metadata = metadata or {}
+        self.target_normalizer = self.metadata.get("target_normalizer", None)
         self.model_name = self.__class__.__name__
 
         warn(
@@ -152,44 +153,26 @@ class TslibBaseModel(BaseModel):
 
     def transform_output(
         self,
-        y_hat: torch.Tensor
-        | list[
-            torch.Tensor
-        ],  # evidenced from TimeXer implementation - in PR #1797  # noqa: E501
-        target_scale: dict[str, torch.Tensor] | None,
+        y_hat: torch.Tensor | list[torch.Tensor],
+        target_scale: dict[str, torch.Tensor] | torch.Tensor | None,
     ) -> torch.Tensor | list[torch.Tensor]:
         """
         Transform the output of the model to the original scale.
 
+        Delegates to ``BaseModel.transform_output``.
+
         Parameters
         ----------
-        y_hat : Union[torch.Tensor, list[torch.Tensor]]
-            Dictionary containing the model output.
-        target_scale : Optional[dict[str, torch.Tensor]]
-            Dictionary containing the target scale for inverse transformation.
+        y_hat : torch.Tensor or list[torch.Tensor]
+            Model output tensor or list of tensors to transform.
+        target_scale : dict[str, torch.Tensor] or torch.Tensor, optional
+            Target scale information for inverse transformation.
 
         Returns
         -------
-        Union[torch.Tensor, list[torch.Tensor]]
-            Dictionary containing the transformed output.
-
-        Notes
-        -----
-        WARNING! : This is a temporary implementation and is meant to be replaced with
-        a more robust scaling and normalization module for v2 of PTF.
+        torch.Tensor or list[torch.Tensor]
+            Transformed output tensor or list of tensors.
         """
-
-        scale = None
-        center = None
-
-        if "scale" in target_scale and "center" in target_scale:
-            scale = target_scale["scale"]
-            center = target_scale["center"]
-        else:
-            raise ValueError("Cannot transform output without scale and center.")
-
-        while scale.dim() < y_hat.dim():
-            scale = scale.unsqueeze(0)
-            center = center.unsqueeze(0)
-
-        return y_hat * scale + center
+        if isinstance(y_hat, list):
+            return [super().transform_output(pred, target_scale) for pred in y_hat]
+        return super().transform_output(y_hat, target_scale)
