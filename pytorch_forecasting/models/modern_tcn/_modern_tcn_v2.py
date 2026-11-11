@@ -7,9 +7,8 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
-from pytorch_forecasting.layers import RevIN
+from pytorch_forecasting.layers import FlattenHead, RevIN
 from pytorch_forecasting.layers._blocks._modern_tcn_block import ModernTCNBlock
-from pytorch_forecasting.layers._head._flatten_head import Flatten_Head
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 
@@ -36,7 +35,7 @@ class ModernTCN(BaseModel):
     dropout : float
         Dropout rate applied inside each encoder block.
     head_dropout : float
-        Dropout rate applied inside the Flatten_Head projection.
+        Dropout rate applied inside the FlattenHead projection.
     individual : bool
         If True, uses a separate linear projection per variable in the head.
     use_revin : bool
@@ -139,12 +138,12 @@ class ModernTCN(BaseModel):
             ]
         )
 
-        self.head = Flatten_Head(
-            individual=individual,
+        self.head = FlattenHead(
             n_vars=self.n_channels,
             nf=d_model * self.n_patches,
             target_window=self.prediction_length * self.n_quantiles,
             head_dropout=head_dropout,
+            individual=individual,
         )
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
@@ -180,7 +179,8 @@ class ModernTCN(BaseModel):
         for block in self.blocks:
             x_enc = block(x_enc)
 
-        out = self.head(x_enc)
+        out = self.head(x_enc)             # (B, pred_len * n_q, C)
+        out = out.permute(0, 2, 1)         # (B, C, pred_len * n_q)
         out = out.reshape(B, C, self.prediction_length, self.n_quantiles)
         out = out.permute(0, 2, 1, 3)
 
