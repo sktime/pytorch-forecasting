@@ -44,6 +44,7 @@ class TFT(BaseModel):
             optimizer_params=optimizer_params,
             lr_scheduler=lr_scheduler,
             lr_scheduler_params=lr_scheduler_params,
+            metadata=metadata,
         )
         self.save_hyperparameters(ignore=["loss", "logging_metrics", "metadata"])
 
@@ -51,7 +52,6 @@ class TFT(BaseModel):
         self.num_layers = num_layers
         self.attention_head_size = attention_head_size
         self.dropout = dropout
-        self.metadata = metadata
         self.output_size = output_size
 
         self.max_encoder_length = self.metadata["max_encoder_length"]

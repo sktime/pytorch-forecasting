@@ -144,6 +144,7 @@ lightning_logs
 *.ckpt
 *.pkl
 .DS_Store
+checkpoints
 
 # data
 pytorch_forecasting/data/*.parquet
