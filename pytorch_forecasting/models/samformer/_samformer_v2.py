@@ -97,9 +97,12 @@ class Samformer(BaseModel):
         self.compute_values = nn.Linear(
             self.max_encoder_length, self.max_encoder_length
         )  # noqa: E501
+        # Emit a separate forecast head per quantile so each has its own
+        # parameters and gradients (unlike tiling a point forecast with expand).
         self.linear_forecaster = nn.Linear(
-            self.max_encoder_length, self.max_prediction_length
-        )  # noqa: E501
+            self.max_encoder_length,
+            self.max_prediction_length * self.n_quantiles,
+        )
 
     def _scaled_dot_product_attention(
         self,
@@ -169,18 +172,15 @@ class Samformer(BaseModel):
 
         out = x_norm + att_score
         out = self.linear_forecaster(out)
+        # (batch, channels, prediction_length * n_quantiles)
+        batch_size, n_channels, _ = out.shape
+        out = out.view(
+            batch_size,
+            n_channels,
+            self.max_prediction_length,
+            self.n_quantiles,
+        )
+        # Target is the last channel: (batch, prediction_length, n_quantiles)
+        target_predictions = out[:, -1, :, :]
 
-        out = out.transpose(1, 2)
-
-        target_predictions = out[:, :, -1]  # (batch_size, max_prediction_length)
-
-        if target_predictions.ndim == 1:
-            target_predictions = target_predictions.unsqueeze(0)
-
-        if self.n_quantiles > 1:
-            target_predictions = target_predictions.unsqueeze(-1).expand(
-                -1, -1, self.n_quantiles
-            )
-        elif self.n_quantiles == 1:
-            target_predictions = target_predictions.unsqueeze(-1)
         return {"prediction": target_predictions}
