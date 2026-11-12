@@ -179,8 +179,8 @@ class ModernTCN(BaseModel):
         for block in self.blocks:
             x_enc = block(x_enc)
 
-        out = self.head(x_enc)             # (B, pred_len * n_q, C)
-        out = out.permute(0, 2, 1)         # (B, C, pred_len * n_q)
+        out = self.head(x_enc)  # (B, pred_len * n_q, C)
+        out = out.permute(0, 2, 1)  # (B, C, pred_len * n_q)
         out = out.reshape(B, C, self.prediction_length, self.n_quantiles)
         out = out.permute(0, 2, 1, 3)
 

@@ -13,8 +13,7 @@ class FlattenHead(nn.Module):
     Flattens the last two dimensions of the input (patch/time × feature), projects
     to the target window, and optionally produces per-quantile outputs.  When
     ``individual=True`` a separate linear projection is used for each input
-    variable (channel-independence head), mirroring the behaviour of the former
-    ``Flatten_Head`` class.
+    variable (channel-independence head).
 
     Parameters
     ----------
@@ -59,7 +58,9 @@ class FlattenHead(nn.Module):
         self.n_vars = n_vars
         self.n_quantiles = n_quantiles
 
-        out_dim = target_window * n_quantiles if n_quantiles is not None else target_window
+        out_dim = (
+            target_window * n_quantiles if n_quantiles is not None else target_window
+        )
 
         if individual:
             self.flattens = nn.ModuleList(
@@ -85,12 +86,12 @@ class FlattenHead(nn.Module):
                 z = self.dropouts[i](z)
                 x_out.append(z)
             x = torch.stack(x_out, dim=1)  # (B, n_vars, target_window [* n_q])
-            x = x.permute(0, 2, 1)         # (B, target_window [* n_q], n_vars)
+            x = x.permute(0, 2, 1)  # (B, target_window [* n_q], n_vars)
         else:
             x = self.flatten(x)
             x = self.linear(x)
             x = self.dropout(x)
-            x = x.permute(0, 2, 1)         # (B, target_window [* n_q], n_vars)
+            x = x.permute(0, 2, 1)  # (B, target_window [* n_q], n_vars)
 
         if self.n_quantiles is not None:
             batch_size = x.shape[0]
