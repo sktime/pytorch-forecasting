@@ -45,8 +45,8 @@ One example of using :py:class:`~data.timeseries.TimeSeriesDataSet` and models i
 
     import lightning.pytorch as pl
     from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor
-    from lightning.pytorch.tuner import Tuner
     from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer
+    from pytorch_forecasting.tuning import Tuner
 
     # load data
     data = ...
@@ -117,6 +117,40 @@ One example of using :py:class:`~data.timeseries.TimeSeriesDataSet` and models i
     trainer.fit(
         tft, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader,
     )
+
+.. _models_resume_checkpoint:
+
+Resuming from a checkpoint
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To resume training, pass the checkpoint as ``ckpt_path`` to ``trainer.fit``. From
+``lightning`` 2.6, also pass ``weights_only=False``:
+
+.. code-block:: python
+
+    trainer.fit(
+        tft,
+        train_dataloaders=train_dataloader,
+        val_dataloaders=val_dataloader,
+        ckpt_path="path/to/checkpoint.ckpt",
+        weights_only=False,
+    )
+
+The same applies to ``trainer.validate`` and ``trainer.test``. ``weights_only`` controls
+how the checkpoint is loaded; it does not select a checkpoint or resume training by
+itself. A v1 PyTorch Forecasting checkpoint contains more than tensors: the fitted encoders and
+normalizers of the dataset as well as the loss and metrics are pickled into it.
+``lightning`` 2.6 passes ``weights_only`` on to ``torch.load``, which defaults to
+``weights_only=True`` from ``torch`` 2.6 and then rejects these objects. Only load
+checkpoints from trusted sources this way, as unpickling can execute arbitrary code.
+``lightning`` 2.4 and 2.5 already load full checkpoints and do not have the keyword.
+
+``load_from_checkpoint`` of v1 models defaults to ``weights_only=False``, and ``lr_find``
+of ``pytorch_forecasting.tuning.Tuner`` loads with it. With ``lightning`` 2.6 and
+``torch`` 2.6, Lightning's ``Tuner.lr_find`` and the ``LearningRateFinder`` callback fail,
+as they restore their temporary checkpoint without ``weights_only``; passing it to
+``trainer.fit`` does not reach the callback. Use ``pytorch_forecasting.tuning.Tuner``
+as in the example above.
 
 
 Selecting an architecture

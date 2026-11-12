@@ -86,7 +86,7 @@ from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.callbacks import EarlyStopping, LearningRateMonitor
 # import dataset, network to train and metric to optimize
 from pytorch_forecasting import TimeSeriesDataSet, TemporalFusionTransformer, QuantileLoss
-from lightning.pytorch.tuner import Tuner
+from pytorch_forecasting.tuning import Tuner
 
 # load data: this is pandas dataframe with at least a column for
 # * the target (what you want to predict)
