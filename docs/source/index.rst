@@ -10,6 +10,7 @@ PyTorch Forecasting Documentation
    **Try the API v2 pre-release!**
 
    | A New API version 2 is in development. Try it out before release: :doc:`v2 API Reference <api_v2>`
+   | Migrating an existing v1 pipeline? See the :doc:`v1 to v2 migration guide <migration-v1-v2>`.
    | **Caution: v2 is WIP and unstable. Not yet production-ready.**
 
 .. raw:: html

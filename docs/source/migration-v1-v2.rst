@@ -39,18 +39,19 @@ and workflow orchestration:
      - A data-agnostic Lightning model created from D2 metadata (M layer)
    * - High-level workflow
      - ``Trainer.fit(model, train_dataloader, ...)``
-     - A v2 package's ``fit()`` and ``predict()`` methods (P layer), or the
+     - A v2 Forecaster's ``fit()`` and ``predict()`` methods (P layer), or the
        Lightning workflow directly
    * - Configuration
      - Dataset and model arguments are commonly coupled
-     - Separate ``datamodule_cfg``, ``model_cfg``, and ``trainer_cfg``
+     - A Forecaster combines model settings with a configured DataModule and
+       Lightning ``Trainer``
 
 
 What stays the same
 -------------------
 
-* Both APIs use PyTorch and Lightning and can be used with custom Lightning
-  trainers and dataloaders.
+* Both APIs use PyTorch and Lightning. Custom Lightning trainers and
+  dataloaders remain available through the v2 M-layer workflow.
 * The existing metrics and normalizers remain available. v2 models use the
   same metrics package while the v2 interface is being developed.
 * The forecasting concepts are unchanged: targets, groups, known and unknown
@@ -70,15 +71,18 @@ What changes
   dataloaders.
 * v2 models do not receive a v1 dataset. They receive metadata produced by the
   D2 module and operate on dictionaries of tensors.
-* The v2 package layer can construct the D2 module, model, and Lightning
-  trainer from separate configuration dictionaries.
-* v2 model and package class names are not always the same as v1 names. Check
+* For models migrated to the v2 Forecaster API, a model-specific Forecaster
+  connects model settings, a D2 DataModule, and a Lightning ``Trainer`` behind
+  ``fit()`` and ``predict()`` methods. This replaces the earlier
+  Package-wrapper design for those models; check the current API references
+  for models that still use a package wrapper.
+* v2 model and Forecaster class names are not always the same as v1 names. Check
   the :doc:`v2 model overview <models_v2>` before choosing a replacement.
-* When a package fit uses its default checkpointing, it saves the model
-  checkpoint alongside the model configuration, DataModule configuration, and
-  metadata artifacts. Keep these files together when moving a trained v2
-  package to another environment. Do not assume that a v1 checkpoint can be
-  loaded by a v2 class (or vice versa).
+* By default, ``Forecaster.fit()`` saves the best model checkpoint alongside
+  the model configuration, DataModule configuration, and metadata artifacts.
+  Keep these files together when moving a trained v2 Forecaster to another
+  environment. Do not assume that a v1 checkpoint can be loaded by a v2 class
+  (or vice versa).
 
 
 Migration steps
@@ -102,7 +106,7 @@ roles of the columns:
 
    from pytorch_forecasting.data.timeseries import TimeSeries
 
-   dataset = TimeSeries(
+   v2_dataset = TimeSeries(
        data=data,
        time="time_idx",
        target="y",
@@ -121,7 +125,7 @@ configuration in one ``TimeSeriesDataSet`` call:
 
    from pytorch_forecasting import TimeSeriesDataSet
 
-   dataset = TimeSeriesDataSet(
+   v1_dataset = TimeSeriesDataSet(
        data,
        time_idx="time_idx",
        target="y",
@@ -185,7 +189,7 @@ configured:
    )
 
    datamodule = EncoderDecoderTimeSeriesDataModule(
-       time_series_dataset=dataset,
+       time_series=v2_dataset,
        max_encoder_length=30,
        max_prediction_length=6,
        batch_size=64,
@@ -196,41 +200,44 @@ initialize a v2 model. The exact DataModule must match the input structure
 expected by the model; see the compatibility information in
 :doc:`v2 models <models_v2>`.
 
-4. Choose the package or M-layer workflow
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+4. Choose the Forecaster or M-layer workflow
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The P layer is the shortest migration path for a standard training workflow.
-For example, a v2 TFT package separates configuration and accepts the D1
-dataset directly:
+The P layer provides model-specific Forecasters with ``fit()`` and
+``predict()`` methods. Configure a data-less D2 DataModule and Lightning
+Trainer on the Forecaster; pass the D1 dataset to ``fit()`` and ``predict()``:
 
 .. code-block:: python
 
+   from lightning.pytorch import Trainer
+   from pytorch_forecasting.data.data_module import (
+       EncoderDecoderTimeSeriesDataModule,
+   )
    from pytorch_forecasting.metrics import MAE, SMAPE
-   from pytorch_forecasting.models.temporal_fusion_transformer import TFT_pkg_v2
-
-   model_pkg = TFT_pkg_v2(
-       datamodule_cfg={
-           "max_encoder_length": 30,
-           "max_prediction_length": 6,
-           "batch_size": 64,
-       },
-       model_cfg={
-           "loss": MAE(),
-           "logging_metrics": [MAE(), SMAPE()],
-           "hidden_size": 32,
-           "attention_head_size": 1,
-           "dropout": 0.1,
-       },
-       trainer_cfg={"max_epochs": 10, "accelerator": "auto"},
+   from pytorch_forecasting.models.temporal_fusion_transformer import (
+       TFTForecaster,
    )
 
-   model_pkg.fit(dataset)
-   predictions = model_pkg.predict(dataset)
+   forecaster = TFTForecaster(
+       datamodule=EncoderDecoderTimeSeriesDataModule(
+           max_encoder_length=30,
+           max_prediction_length=6,
+           batch_size=64,
+       ),
+       trainer=Trainer(max_epochs=10, accelerator="auto"),
+       loss=MAE(),
+       logging_metrics=[MAE(), SMAPE()],
+       hidden_size=32,
+       attention_head_size=1,
+       dropout=0.1,
+   )
 
-``fit`` can also receive a pre-built D2 DataModule. ``predict`` accepts a D1
-dataset, D2 DataModule, or PyTorch ``DataLoader``. For checkpoint
-reproducibility, keep the configuration artifacts saved alongside the v2
-checkpoint.
+   forecaster.fit(v2_dataset)
+   predictions = forecaster.predict(v2_dataset)
+
+The Forecaster creates a data-attached D2 DataModule when fitting and retains
+the fitted preprocessing for prediction. Its ``fit()`` and ``predict()``
+methods accept D1 ``TimeSeries`` objects, not a DataModule or DataLoader.
 
 Use the M layer directly when you need full control over the Lightning
 workflow. In that case, construct the DataModule first and pass its metadata to
@@ -264,9 +271,11 @@ Compare the v1 and v2 pipelines using the same:
 * loss and evaluation metrics; and
 * random seeds and trainer settings.
 
-The output containers are not guaranteed to have the same structure. Inspect
-the v2 prediction dictionary and adapt downstream code rather than assuming
-that v1's ``output`` or decoded prediction fields are present.
+The output containers are not guaranteed to have the same structure. A
+Forecaster returns a v2 ``TimeSeries`` for point or quantile predictions and a
+dictionary in raw mode; direct M-layer prediction also returns a dictionary.
+Adapt downstream code rather than assuming that v1's ``output`` or decoded
+prediction fields are present.
 
 
 Common replacements
@@ -288,24 +297,25 @@ Common replacements
    * - ``Model.from_dataset(dataset, ...)``
      - Instantiate the v2 model with ``metadata=datamodule.metadata``
    * - ``Trainer.fit(model, train_dataloaders=..., ...)``
-     - ``Trainer.fit(model, datamodule)`` or the package's ``fit()``
+     - ``Trainer.fit(model, datamodule=datamodule)`` or a model's Forecaster
+       ``fit(dataset)`` (where available)
    * - ``model.predict(dataloader, ...)``
-     - The v2 model's ``predict(dataloader, ...)`` or package's
-       ``predict(dataset_or_datamodule, ...)``
+     - A model's Forecaster ``predict(dataset)`` method (where available), or
+       the M-layer model's ``predict(dataloader, ...)`` method
    * - Dataset parameters saved manually
-     - Package checkpoints can save model, DataModule, and metadata artifacts
+     - Forecaster checkpoints can save model, DataModule, and metadata
+       artifacts
 
 
 New and migrated models
 ------------------------
 
-The v2 model catalogue includes v2 implementations and package wrappers for
-models such as TFT, DLinear, Samformer, TIDE, TimeXer, TSMixer, xLSTMTime,
-DecoderMLP, SOFTS, SCINet, PatchTST, FreTS, ModernTCN, UniTS, and NHiTS.
-Availability and DataModule compatibility can change during the beta period;
-the authoritative list is the generated :doc:`v2 model overview <model_list>`
-and the individual :doc:`M layer <m_layer_v2>` and
-:doc:`P layer <pkg_v2>` references.
+The v2 model catalogue includes implementations for TFT, DLinear, Samformer,
+TIDE, TimeXer, TSMixer, xLSTMTime, DecoderMLP, SOFTS, SCINet, PatchTST,
+FreTS, ModernTCN, UniTS, and NHiTS. Forecaster support and DataModule
+compatibility vary by model and can change during the beta period; check the
+generated :doc:`v2 model overview <model_list>` and the individual
+:doc:`M layer <m_layer_v2>` and :doc:`P layer <pkg_v2>` references.
 
 Having a v2 model with a similar name does not imply v1 checkpoint or output
 compatibility. Treat each model as a new implementation and validate it against
