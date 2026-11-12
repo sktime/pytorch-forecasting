@@ -530,3 +530,22 @@ def test_multivariate_target():
     assert (
         y.shape[-1] == 2
     ), "Target should have two dimensions for n_features for multivariate target."
+
+
+def test_getitem_is_composed_of_slice_and_assemble(tslib_data_module):
+    """``__getitem__`` must equal ``_assemble(_slice_window(idx))``."""
+    tslib_data_module.setup(stage="fit")
+    dataset = tslib_data_module.train_dataset
+
+    x_direct, y_direct = dataset[0]
+    x_composed, y_composed = dataset._assemble(dataset._slice_window(0))
+
+    assert set(x_direct) == set(x_composed)
+    for key in x_direct:
+        assert torch.equal(x_direct[key], x_composed[key]), key
+    if isinstance(y_direct, list):
+        assert len(y_direct) == len(y_composed)
+        for a, b in zip(y_direct, y_composed):
+            assert torch.equal(a, b)
+    else:
+        assert torch.equal(y_direct, y_composed)

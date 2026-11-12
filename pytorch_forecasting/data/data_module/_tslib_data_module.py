@@ -43,6 +43,12 @@ class _TslibDataset(Dataset):
             - prediction_length: Length of the prediction/decoder window
     add_relative_time_idx: bool
         Whether to add relative time index to the dataset.
+    augmentation: list or None
+        Transforms to apply to each window on every access, in order. ``None``
+        means no augmentation.
+    neighbours:
+        Pool of same-label windows for transforms declaring
+        ``requires_neighbours``. ``None`` otherwise.
     """
 
     def __init__(
@@ -51,14 +57,226 @@ class _TslibDataset(Dataset):
         data_module: "TslibDataModule",
         windows: list[tuple[int, int, int, int]],
         add_relative_time_idx: bool = False,
+        augmentation: list | None = None,
+        neighbours=None,
     ):
         self.dataset = dataset
         self.data_module = data_module
         self.windows = windows
         self.add_relative_time_idx = add_relative_time_idx
+        self.augmentation = augmentation
+        self.neighbours = neighbours
+        self._rng = None
 
     def __len__(self) -> int:
         return len(self.windows)
+
+    @property
+    def rng(self) -> torch.Generator:
+        """Generator for augmentation, seeded from the current worker's seed.
+
+        Created lazily rather than in ``__init__`` because dataloader workers
+        are forked after the dataset is built: ``torch.initial_seed()`` only
+        returns the per-worker seed once we are inside the worker. Creating it
+        eagerly would give every worker the same noise, which is the bug
+        ``thuml`` has by using ``numpy.random`` directly.
+        """
+        if self._rng is None:
+            self._rng = torch.Generator()
+            self._rng.manual_seed(torch.initial_seed() % (2**63 - 1))
+        return self._rng
+
+    def _slice_window(self, idx: int) -> dict[str, Any]:
+        """Slice the raw blocks for window ``idx``. No augmentation here.
+
+        Returns
+        -------
+        dict
+            ``cont``, ``cat`` and ``target`` carry the full window along time,
+            history and future concatenated, so that transforms which move
+            along the time axis cannot break the alignment between the context
+            and the target it predicts. Keys prefixed with ``_`` are internal
+            and are not handed to augmentation transforms.
+        """
+        series_idx, start_idx, context_length, prediction_length = self.windows[idx]
+
+        processed_data = self.data_module._preprocess_data(series_idx)
+
+        end_idx = start_idx + context_length + prediction_length
+        history_indices = slice(start_idx, start_idx + context_length)
+        future_indices = slice(start_idx + context_length, end_idx)
+        window_indices = slice(start_idx, end_idx)
+
+        return {
+            "cont": processed_data["features"]["continuous"][window_indices],
+            "cat": processed_data["features"]["categorical"][window_indices],
+            "target": processed_data["target"][window_indices],
+            "ctx_len": context_length,
+            "pred_len": prediction_length,
+            "_processed": processed_data,
+            "_history_indices": history_indices,
+            "_future_indices": future_indices,
+            "_series_idx": series_idx,
+            "_window_idx": idx,
+        }
+
+    def _augment(self, window: dict[str, Any]) -> dict[str, Any]:
+        """Apply the configured transforms to ``window``, in order.
+
+        Transforms see only the public blocks, so they cannot reach the
+        internal keys ``_assemble`` relies on. Their output is merged back
+        rather than replacing the dict wholesale.
+
+        ``window_idx`` is the one piece of identity a transform does see: the
+        label guided transforms look their neighbour pool up by it, and
+        ``NeighbourIndex`` is indexed by position in this dataset's window
+        list, which is exactly the ``idx`` ``__getitem__`` was called with.
+        """
+        public = {
+            "cont": window["cont"],
+            "cat": window["cat"],
+            "target": window["target"],
+            "ctx_len": window["ctx_len"],
+            "pred_len": window["pred_len"],
+            "window_idx": window["_window_idx"],
+        }
+
+        for transform in self.augmentation:
+            tags = transform.get_class_tags()
+            neighbours = self.neighbours if tags["requires_neighbours"] else None
+            public = transform.transform(public, self.rng, neighbours)
+
+        out = dict(window)
+        for key in ("cont", "cat", "target"):
+            out[key] = public[key]
+        return out
+
+    def _assemble(self, window: dict[str, Any]) -> tuple[dict[str, Any], Any]:
+        """Turn a window dict into the ``(x, y)`` pair the models consume."""
+        processed_data = window["_processed"]
+        history_indices = window["_history_indices"]
+        future_indices = window["_future_indices"]
+        context_length = window["ctx_len"]
+        prediction_length = window["pred_len"]
+
+        ctx = context_length
+        history_cont = window["cont"][:ctx]
+        history_cat = window["cat"][:ctx]
+        future_cont = window["cont"][ctx:]
+        future_cat = window["cat"][ctx:]
+
+        positions = torch.arange(processed_data["target"].shape[0])
+
+        metadata = self.data_module.metadata
+
+        known_features = set(metadata["feature_names"]["known"])
+        continuous_feature_names = metadata["feature_names"]["continuous"]
+        categorical_feature_names = metadata["feature_names"]["categorical"]
+
+        # use masking to filter out known and unknown features.
+        cont_known_mask = torch.tensor(
+            [feat in known_features for feat in continuous_feature_names],
+            dtype=torch.bool,
+        )
+
+        cat_known_mask = torch.tensor(
+            [feat in known_features for feat in categorical_feature_names],
+            dtype=torch.bool,
+        )
+
+        future_cont = (
+            future_cont[:, cont_known_mask]
+            if len(cont_known_mask) > 0
+            else torch.zeros((future_cont.shape[0], 0))
+        )  # noqa: E501
+        future_cat = (
+            future_cat[:, cat_known_mask]
+            if len(cat_known_mask) > 0
+            else torch.zeros((future_cat.shape[0], 0))
+        )  # noqa: E501
+
+        history_mask = (
+            processed_data["time_mask"][history_indices]
+            if "time_mask" in processed_data
+            else torch.ones(context_length, dtype=torch.bool)
+        )
+
+        future_mask = (
+            processed_data["time_mask"][future_indices]
+            if "time_mask" in processed_data
+            else torch.ones(prediction_length, dtype=torch.bool)
+        )
+
+        history_target = window["target"][:ctx]
+        future_target = window["target"][ctx:]
+
+        x = {
+            "history_cont": history_cont,
+            "history_cat": history_cat,
+            "future_cont": future_cont,
+            "future_cat": future_cat,
+            "history_length": torch.tensor(context_length),
+            "future_length": torch.tensor(prediction_length),
+            "history_mask": history_mask,
+            "future_mask": future_mask,
+            "groups": processed_data["group"],
+            "history_time_idx": torch.arange(context_length),
+            "future_time_idx": torch.arange(
+                context_length, context_length + prediction_length
+            ),
+            "prediction_start_idx": positions[future_indices][:1],
+            "history_target": history_target,
+            "future_target": future_target,
+            "future_target_len": torch.tensor(prediction_length),
+        }
+
+        if self.add_relative_time_idx:
+            x["history_relative_time_idx"] = torch.arange(-context_length, 0)
+            x["future_relative_time_idx"] = torch.arange(0, prediction_length)
+
+        if processed_data["static"] is not None:
+            static_features = processed_data["static"]
+            if not isinstance(static_features, torch.Tensor):
+                static_features = torch.tensor(static_features, dtype=torch.float32)
+            static_features = static_features.flatten()
+
+            static_feature_names = metadata["feature_names"]["static"]
+            static_categorical_names = set(
+                metadata["feature_names"]["static_categorical"]
+            )
+
+            static_categorical_indices = [
+                idx
+                for idx, name in enumerate(static_feature_names)
+                if name in static_categorical_names
+            ]
+            static_continuous_indices = [
+                idx
+                for idx, name in enumerate(static_feature_names)
+                if name not in static_categorical_names
+            ]
+
+            x["static_categorical_features"] = (
+                static_features[static_categorical_indices].unsqueeze(0)
+                if len(static_categorical_indices) > 0
+                else torch.zeros((1, 0), dtype=static_features.dtype)
+            )
+            x["static_continuous_features"] = (
+                static_features[static_continuous_indices].unsqueeze(0)
+                if len(static_continuous_indices) > 0
+                else torch.zeros((1, 0), dtype=static_features.dtype)
+            )
+
+        if "target_scale" in processed_data:
+            x["target_scale"] = processed_data["target_scale"]
+
+        y = future_target
+        if self.data_module.n_targets > 1:
+            y = [t.squeeze(-1) for t in torch.split(y, 1, dim=1)]
+        else:
+            y = y.squeeze(-1)
+
+        return x, y
 
     def __getitem__(self, idx: int) -> dict[str, Any]:
         """
@@ -133,136 +351,10 @@ class _TslibDataset(Dataset):
             If ``n_targets`` > 1, a list of tensors each of shape (prediction_length,)
             is returned. Otherwise, a tensor of shape (prediction_length,) is returned.
         """
-
-        series_idx, start_idx, context_length, prediction_length = self.windows[idx]
-
-        processed_data = self.data_module._preprocess_data(series_idx)
-
-        continuous_features = processed_data["features"]["continuous"]
-        categorical_features = processed_data["features"]["categorical"]
-
-        end_idx = start_idx + context_length + prediction_length
-        history_indices = slice(start_idx, start_idx + context_length)
-        future_indices = slice(start_idx + context_length, end_idx)
-
-        positions = torch.arange(processed_data["target"].shape[0])
-
-        metadata = self.data_module.metadata
-
-        history_cont = continuous_features[history_indices]
-        history_cat = categorical_features[history_indices]
-
-        future_cont = continuous_features[future_indices]
-        future_cat = categorical_features[future_indices]
-
-        known_features = set(metadata["feature_names"]["known"])
-        continuous_feature_names = metadata["feature_names"]["continuous"]
-        categorical_feature_names = metadata["feature_names"]["categorical"]
-
-        # use masking to filter out known and unknown features.
-        cont_known_mask = torch.tensor(
-            [feat in known_features for feat in continuous_feature_names],
-            dtype=torch.bool,
-        )
-
-        cat_known_mask = torch.tensor(
-            [feat in known_features for feat in categorical_feature_names],
-            dtype=torch.bool,
-        )
-
-        future_cont = (
-            future_cont[:, cont_known_mask]
-            if len(cont_known_mask) > 0
-            else torch.zeros((future_cont.shape[0], 0))
-        )  # noqa: E501
-        future_cat = (
-            future_cat[:, cat_known_mask]
-            if len(cat_known_mask) > 0
-            else torch.zeros((future_cat.shape[0], 0))
-        )  # noqa: E501
-
-        history_mask = (
-            processed_data["time_mask"][history_indices]
-            if "time_mask" in processed_data
-            else torch.ones(context_length, dtype=torch.bool)
-        )
-
-        future_mask = (
-            processed_data["time_mask"][future_indices]
-            if "time_mask" in processed_data
-            else torch.ones(prediction_length, dtype=torch.bool)
-        )
-
-        history_target = processed_data["target"][history_indices]
-        future_target = processed_data["target"][future_indices]
-
-        x = {
-            "history_cont": history_cont,
-            "history_cat": history_cat,
-            "future_cont": future_cont,
-            "future_cat": future_cat,
-            "history_length": torch.tensor(context_length),
-            "future_length": torch.tensor(prediction_length),
-            "history_mask": history_mask,
-            "future_mask": future_mask,
-            "groups": processed_data["group"],
-            "history_time_idx": torch.arange(context_length),
-            "future_time_idx": torch.arange(
-                context_length, context_length + prediction_length
-            ),
-            "prediction_start_idx": positions[future_indices][:1],
-            "history_target": history_target,
-            "future_target": future_target,
-            "future_target_len": torch.tensor(prediction_length),
-        }
-
-        if self.add_relative_time_idx:
-            x["history_relative_time_idx"] = torch.arange(-context_length, 0)
-            x["future_relative_time_idx"] = torch.arange(0, prediction_length)
-
-        if processed_data["static"] is not None:
-            static_features = processed_data["static"]
-            if not isinstance(static_features, torch.Tensor):
-                static_features = torch.tensor(static_features, dtype=torch.float32)
-            static_features = static_features.flatten()
-
-            static_feature_names = metadata["feature_names"]["static"]
-            static_categorical_names = set(
-                metadata["feature_names"]["static_categorical"]
-            )
-
-            static_categorical_indices = [
-                idx
-                for idx, name in enumerate(static_feature_names)
-                if name in static_categorical_names
-            ]
-            static_continuous_indices = [
-                idx
-                for idx, name in enumerate(static_feature_names)
-                if name not in static_categorical_names
-            ]
-
-            x["static_categorical_features"] = (
-                static_features[static_categorical_indices].unsqueeze(0)
-                if len(static_categorical_indices) > 0
-                else torch.zeros((1, 0), dtype=static_features.dtype)
-            )
-            x["static_continuous_features"] = (
-                static_features[static_continuous_indices].unsqueeze(0)
-                if len(static_continuous_indices) > 0
-                else torch.zeros((1, 0), dtype=static_features.dtype)
-            )
-
-        if "target_scale" in processed_data:
-            x["target_scale"] = processed_data["target_scale"]
-
-        y = processed_data["target"][future_indices]
-        if self.data_module.n_targets > 1:
-            y = [t.squeeze(-1) for t in torch.split(y, 1, dim=1)]
-        else:
-            y = y.squeeze(-1)
-
-        return x, y
+        window = self._slice_window(idx)
+        if self.augmentation:
+            window = self._augment(window)
+        return self._assemble(window)
 
 
 class TslibDataModule(LightningDataModule):
@@ -316,6 +408,15 @@ class TslibDataModule(LightningDataModule):
         Proportions for train, validation, and test dataset splits.
     collate_fn : Optional[callable], default=None
         Custom collate function for the dataloader.
+    augmentation : BaseAugmentation or list of BaseAugmentation, optional
+        Transforms perturbing each training window on every access. A list is
+        applied in order. Applied to the training split only, and only after
+        scaling, so that the default ``sigma`` values are in units of a
+        standard deviation. Default is None, meaning no augmentation.
+    augmentation_label : str, optional
+        Name of the static categorical column holding the class label, required
+        only by augmentations declaring ``requires_neighbours``. Default is
+        None.
     """  # noqa: E501
 
     def __init__(
@@ -341,6 +442,8 @@ class TslibDataModule(LightningDataModule):
         num_workers: int = 0,
         train_val_test_split: tuple[float, float, float] = (0.7, 0.15, 0.15),
         collate_fn: Callable | None = None,
+        augmentation=None,
+        augmentation_label: str | None = None,
         **kwargs,
     ) -> None:
         super().__init__()
@@ -357,6 +460,13 @@ class TslibDataModule(LightningDataModule):
         self.collate_fn = (
             collate_fn if collate_fn is not None else self.__class__.collate_fn
         )  # noqa: E501
+        self.augmentation_label = augmentation_label
+        if augmentation is None:
+            self._augmentation = None
+        elif isinstance(augmentation, (list, tuple)):
+            self._augmentation = list(augmentation)
+        else:
+            self._augmentation = [augmentation]
         self.kwargs = kwargs
 
         warnings.warn(
@@ -702,6 +812,51 @@ class TslibDataModule(LightningDataModule):
 
         return windows
 
+    def _build_neighbour_index(self, dataset, windows):
+        """Build the same-label pool the guided augmentations need.
+
+        Returns ``None`` when no configured transform declares
+        ``requires_neighbours``, so the per-sample-only case and the
+        validation, test and prediction splits pay nothing.
+        """
+        if not self._augmentation:
+            return None
+        if not any(
+            t.get_class_tags()["requires_neighbours"] for t in self._augmentation
+        ):
+            return None
+
+        from pytorch_forecasting.data.augmentation import NeighbourIndex
+
+        static_names = self.metadata["feature_names"]["static_categorical"]
+        if self.augmentation_label is None:
+            raise ValueError(
+                "augmentation_label is required when an augmentation declares "
+                "requires_neighbours. Pass the name of the static categorical "
+                f"column holding the class label; available: {static_names}."
+            )
+        if self.augmentation_label not in static_names:
+            raise ValueError(
+                f"augmentation_label={self.augmentation_label!r} is not a "
+                f"static categorical column; available: {static_names}."
+            )
+
+        all_static = self.metadata["feature_names"]["static"]
+        label_pos = all_static.index(self.augmentation_label)
+
+        labels = []
+        series_of_window = []
+        for series_idx, _, _, _ in windows:
+            static = self._preprocess_data(series_idx)["static"]
+            labels.append(int(static[label_pos].item()))
+            series_of_window.append(int(series_idx))
+
+        return NeighbourIndex(
+            dataset=dataset,
+            labels=torch.tensor(labels),
+            series_of_window=series_of_window,
+        )
+
     def setup(self, stage: str | None = None) -> None:
         """
         Setup the data module by preparing the datasets for training,
@@ -760,6 +915,10 @@ class TslibDataModule(LightningDataModule):
                     data_module=self,
                     windows=self._train_windows,
                     add_relative_time_idx=self.add_relative_time_idx,
+                    augmentation=self._augmentation,
+                )
+                self.train_dataset.neighbours = self._build_neighbour_index(
+                    self.train_dataset, self._train_windows
                 )
 
                 self.val_dataset = _TslibDataset(

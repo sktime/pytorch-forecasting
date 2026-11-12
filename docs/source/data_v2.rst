@@ -33,6 +33,7 @@ D2 Layer: DataModule
 The D2 Layer sits on top of D1 and is implemented as a PyTorch Lightning ``LightningDataModule``. This layer is responsible for the heavier lifting:
 
 * **Preprocessing:** Applying normalizers and encoders to the data.
+* **Augmentation:** Optionally perturbing each training window on every access, on the training split only.
 * **Batching:** Creating and managing the ``train_dataloader``, ``val_dataloader``, and ``test_dataloader``.
 * **Model Initialization Metadata:** Dynamically collecting necessary architectural information (such as the number of categorical variables, embedding sizes, and vocabulary states) required to properly instantiate the Forecasting models in the Model Layer.
 
@@ -58,6 +59,22 @@ See the detailed API documentation for the V2 data classes below:
 .. autosummary::
    :toctree: api
 
+   data.augmentation.BaseAugmentation
+   data.augmentation.DiscriminativeGuidedWarp
+   data.augmentation.DiscriminativeGuidedWarpShape
+   data.augmentation.Jitter
+   data.augmentation.MagnitudeWarp
+   data.augmentation.NeighbourIndex
+   data.augmentation.Permutation
+   data.augmentation.RandomGuidedWarp
+   data.augmentation.RandomGuidedWarpShape
+   data.augmentation.Scaling
+   data.augmentation.SignFlip
+   data.augmentation.Spawner
+   data.augmentation.TimeWarp
+   data.augmentation.Wdba
+   data.augmentation.WindowSlice
+   data.augmentation.WindowWarp
    data.encoders.EncoderNormalizer
    data.encoders.GroupNormalizer
    data.encoders.MultiNormalizer
