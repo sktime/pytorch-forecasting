@@ -722,6 +722,8 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
                   Time indices for the encoder sequence.
                 * ``decoder_time_idx`` : tensor of shape (pred_length,)
                   Time indices for the decoder sequence.
+                * ``prediction_start_idx`` : tensor of shape (1,)
+                  First position within the series that the decoder window predicts.
                 * ``target_past`` : torch.Tensor of shape (enc_length,)
                   Historical target values for the encoder sequence.
                 * ``target_scale`` : tensor of shape (1,)
@@ -750,6 +752,8 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
             end_idx = start_idx + enc_length + pred_length
             encoder_indices = slice(start_idx, start_idx + enc_length)
             decoder_indices = slice(start_idx + enc_length, end_idx)
+
+            positions = torch.arange(data["length"])
 
             target_past = data["target"][encoder_indices]
 
@@ -860,6 +864,7 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
                 "target_past": target_past,
                 "encoder_time_idx": torch.arange(enc_length),
                 "decoder_time_idx": torch.arange(enc_length, enc_length + pred_length),
+                "prediction_start_idx": positions[decoder_indices][:1],
                 "target_scale": target_scale,
                 "encoder_mask": encoder_mask,
                 "decoder_mask": decoder_mask,
@@ -1104,6 +1109,9 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
             "target_past": torch.stack([x["target_past"] for x, _ in batch]),
             "encoder_time_idx": torch.stack([x["encoder_time_idx"] for x, _ in batch]),
             "decoder_time_idx": torch.stack([x["decoder_time_idx"] for x, _ in batch]),
+            "prediction_start_idx": torch.stack(
+                [x["prediction_start_idx"] for x, _ in batch]
+            ),
             "encoder_mask": torch.stack([x["encoder_mask"] for x, _ in batch]),
             "decoder_mask": torch.stack([x["decoder_mask"] for x, _ in batch]),
         }
