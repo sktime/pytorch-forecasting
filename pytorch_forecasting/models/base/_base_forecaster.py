@@ -421,7 +421,7 @@ class BaseForecaster(_BasePtObject_v2):
 
         dm = self._load_datamodule(data)
         predictions = self.model.predict(
-            dataloader,
+            dm.predict_dataloader(),
             mode=mode,
             return_info=return_info,
             trainer=trainer if trainer is not None else self.trainer_,
