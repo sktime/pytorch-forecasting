@@ -333,6 +333,21 @@ class MultiLoss(LightningMetric):
         """
         return len(self.metrics)
 
+    def _select_target(self, y_actual, idx):
+        """
+        Target and sample weight for one metric.
+
+        A list of tensors is one target per metric. ``(targets, weight)`` is the
+        older layout: ``targets`` is a list of tensors and ``weight`` is shared.
+        """
+        if (
+            isinstance(y_actual, list | tuple)
+            and len(y_actual) == len(self.metrics)
+            and all(isinstance(part, torch.Tensor) for part in y_actual)
+        ):
+            return y_actual[idx], None
+        return y_actual[0][idx], y_actual[1]
+
     def update(self, y_pred: torch.Tensor, y_actual: torch.Tensor, **kwargs) -> None:
         """
         Update composite metric
@@ -343,17 +358,18 @@ class MultiLoss(LightningMetric):
             **kwargs: arguments to update function
         """
         for idx, metric in enumerate(self.metrics):
+            target = self._select_target(y_actual, idx)
             try:
                 metric.update(
                     y_pred[idx],
-                    (y_actual[0][idx], y_actual[1]),
+                    target,
                     **{
                         name: value[idx] if isinstance(value, list | tuple) else value
                         for name, value in kwargs.items()
                     },
                 )
             except TypeError:  # silently update without kwargs if not supported
-                metric.update(y_pred[idx], (y_actual[0][idx], y_actual[1]))
+                metric.update(y_pred[idx], target)
 
     def compute(self) -> torch.Tensor:
         """
@@ -387,17 +403,18 @@ class MultiLoss(LightningMetric):
         """
         results = []
         for idx, metric in enumerate(self.metrics):
+            target = self._select_target(y_actual, idx)
             try:
                 res = metric(
                     y_pred[idx],
-                    (y_actual[0][idx], y_actual[1]),
+                    target,
                     **{
                         name: value[idx] if isinstance(value, list | tuple) else value
                         for name, value in kwargs.items()
                     },
                 )
             except TypeError:  # silently update without kwargs if not supported
-                res = metric(y_pred[idx], (y_actual[0][idx], y_actual[1]))
+                res = metric(y_pred[idx], target)
             results.append(res * self.weights[idx])
 
         if len(results) == 1:

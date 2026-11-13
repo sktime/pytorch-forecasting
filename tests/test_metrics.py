@@ -24,6 +24,7 @@ from pytorch_forecasting.metrics import (
 from pytorch_forecasting.metrics.base_metrics import (
     AggregationMetric,
     CompositeMetric,
+    MultiLoss,
 )
 
 
@@ -590,6 +591,31 @@ def test_QuantileLoss_to_prediction_fallback():
     y_pred_2d = torch.tensor([[10.0, 20.0]])
     result_2d = loss_no_median.to_prediction(y_pred_2d)
     assert torch.equal(result_2d, y_pred_2d)
+
+
+def test_multiloss_list_of_targets():
+    torch.manual_seed(0)
+    target_1 = torch.rand(4, 6)
+    target_2 = torch.rand(4, 6)
+    pred_1 = torch.rand(4, 6)
+    pred_2 = torch.rand(4, 6)
+
+    loss = MultiLoss([MAE(), MAE()], weights=[0.5, 2.0])
+    got = loss([pred_1, pred_2], [target_1, target_2])
+    expected = 0.5 * MAE()(pred_1, target_1) + 2.0 * MAE()(pred_2, target_2)
+    assert torch.isclose(got, expected)
+
+    # (targets, weight) still means a shared sample weight, not a second target
+    weight = torch.rand(4, 6)
+    got_weighted = loss([pred_1, pred_2], ([target_1, target_2], weight))
+    expected_weighted = 0.5 * MAE()(pred_1, (target_1, weight)) + 2.0 * MAE()(
+        pred_2, (target_2, weight)
+    )
+    assert torch.isclose(got_weighted, expected_weighted)
+
+    loss.reset()
+    loss.update([pred_1, pred_2], [target_1, target_2])
+    assert torch.isclose(loss.compute(), expected)
 
 
 def test_composite_metric_immutability():
