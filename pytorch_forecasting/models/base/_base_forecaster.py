@@ -373,6 +373,7 @@ class BaseForecaster(_BasePtObject_v2):
         mode: str = "prediction",
         return_info: list[str] | str | None = None,
         output_dir: str | Path | None = None,
+        trainer: Trainer | None = None,
         **kwargs,
     ) -> TimeSeries | dict[str, torch.Tensor]:
         """
@@ -393,9 +394,10 @@ class BaseForecaster(_BasePtObject_v2):
             dict for ``mode="raw"``.
         output_dir : str or Path, optional
             If given, the result is also pickled to ``predictions.pkl`` there.
+        trainer : lightning.Trainer, optional
+            Trainer to predict with. Defaults to the trainer used in ``fit``.
         **kwargs :
-            Passed on to the model's ``.predict()``, e.g. ``mode_kwargs`` and
-            ``trainer_kwargs``.
+            Passed on to the model's ``.predict()``, e.g. ``mode_kwargs``.
 
         Returns
         -------
@@ -423,7 +425,11 @@ class BaseForecaster(_BasePtObject_v2):
 
         dataloader = self._load_dataloader(data)
         predictions = self.model.predict(
-            dataloader, mode=mode, return_info=return_info, **kwargs
+            dataloader,
+            mode=mode,
+            return_info=return_info,
+            trainer=trainer if trainer is not None else self.trainer_,
+            **kwargs,
         )
         if mode != "raw":
             predictions = self._to_timeseries(

@@ -129,7 +129,7 @@ class BaseModel(LightningModule):
         mode: str = "prediction",
         return_info: list[str] | str | None = None,
         mode_kwargs: dict[str, Any] = None,
-        trainer_kwargs: dict[str, Any] = None,
+        trainer: Trainer | None = None,
     ) -> dict[str, torch.Tensor]:
         """
         Generate predictions for new data using the `lightning.Trainer`.
@@ -145,9 +145,9 @@ class BaseModel(LightningModule):
             ``"y"``, ``"index"`` and ``"decoder_lengths"``.
         mode_kwargs : dict[str, Any]
             Additional arguments for `to_prediction`/`to_quantiles`.
-        trainer_kwargs: dict[str, Any]
-            Additional arguments for `Trainer`. The dict and any ``callbacks``
-            list in it are not modified.
+        trainer : lightning.Trainer, optional
+            Trainer to predict with. Defaults to ``Trainer()``. Its
+            ``callbacks`` are left as they were, also if prediction fails.
 
         Returns
         -------
@@ -160,21 +160,18 @@ class BaseModel(LightningModule):
             If ``mode`` or an entry of ``return_info`` is not a valid option.
             Raised before any batch is predicted.
         """
+        # validates `mode` and `return_info` before the trainer is touched
         predict_callback = PredictCallback(
             mode=mode, return_info=return_info, mode_kwargs=mode_kwargs
         )
+        trainer = trainer or Trainer()
 
-        # work on copies, so the dict and callbacks list of the caller stay unchanged
-        trainer_kwargs = dict(trainer_kwargs or {})
-        callbacks = trainer_kwargs.get("callbacks") or []
-        if isinstance(callbacks, (list, tuple)):
-            callbacks = list(callbacks)
-        else:
-            callbacks = [callbacks]
-        trainer_kwargs["callbacks"] = [*callbacks, predict_callback]
-
-        trainer = Trainer(**trainer_kwargs)
-        trainer.predict(self, dataloaders=dataloader)
+        trainer.callbacks.append(predict_callback)
+        try:
+            trainer.predict(self, dataloaders=dataloader)
+        finally:
+            # also on failure, so a reused trainer does not keep the callback
+            trainer.callbacks.remove(predict_callback)
 
         return predict_callback.result
 
