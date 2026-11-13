@@ -97,7 +97,7 @@ def _make_datamodule(df, context_length, prediction_length, batch_size):
         unknown=["value"],
     )
     dm = EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=ts,
+        time_series=ts,
         max_encoder_length=context_length,
         max_prediction_length=prediction_length,
         batch_size=batch_size,
