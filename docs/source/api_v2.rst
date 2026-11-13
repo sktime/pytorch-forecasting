@@ -50,5 +50,6 @@ Join the discussion and track our progress on GitHub:
     Models <models_v2>
     Package <pkg_v2>
     Metrics <metrics>
+    Registry <registry>
     Utils <utils>
     Tutorials <tutorials_v2>
