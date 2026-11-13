@@ -1,6 +1,5 @@
 from dataclasses import replace
 import inspect
-import itertools
 from pathlib import Path
 import pickle
 from typing import Any, Optional, Union
@@ -8,7 +7,6 @@ from typing import Any, Optional, Union
 from lightning import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint, ModelSummary
 from lightning.pytorch.core.datamodule import LightningDataModule
-import numpy as np
 import pandas as pd
 import torch
 import yaml
@@ -209,55 +207,9 @@ class BaseForecaster(_BasePtObject_v2):
         return dm
 
     @staticmethod
-    def _window_index(
-        data: TimeSeries, windows: list, series_times: dict[int, np.ndarray]
-    ) -> pd.DataFrame:
-        """Label each forecast step of ``windows`` with its group and time.
-
-        Parameters
-        ----------
-        data : TimeSeries
-            The data predicted on.
-        windows : list of tuple
-            One entry per window, ``(series_idx, start_idx, encoder_length,
-            prediction_length)``, as recorded by the prediction dataset.
-        series_times : dict of int to np.ndarray
-            Time axis of each series, as recorded by the datamodule.
-
-        Returns
-        -------
-        pd.DataFrame
-            ``n_windows * prediction_length`` rows, with the group columns of
-            ``data``, its time column, and ``<time>_origin``, the last encoder
-            time of the window.
-        """
-        group, time = data._group, data._time
-        keys = [k if isinstance(k, tuple) else (k,) for k in data._group_ids]
-        per_series = [series_times[s] for s in range(len(data))]
-        times = np.concatenate(per_series)
-        offsets = np.cumsum([0] + [len(t) for t in per_series])
-
-        w = np.fromiter(
-            itertools.chain.from_iterable(windows),
-            dtype=np.int64,
-            count=4 * len(windows),
-        ).reshape(-1, 4)
-        pred_len = w[0, 3]
-        first = offsets[w[:, 0]] + w[:, 1] + w[:, 2]
-        rows = np.repeat(w[:, 0], pred_len)
-        if group:
-            index = pd.DataFrame(keys, columns=group).iloc[rows]
-            index = index.reset_index(drop=True)
-        else:
-            index = pd.DataFrame(index=range(len(rows)))
-        index[time] = times[(first[:, None] + np.arange(pred_len)).reshape(-1)]
-        index[f"{time}_origin"] = np.repeat(times[first - 1], pred_len)
-        return index
-
-    @staticmethod
     def _to_timeseries(
         y: torch.Tensor | list[torch.Tensor],
-        index: pd.DataFrame,
+        index: dict,
         time: str,
         group: list[str],
         metadata: Any,
@@ -270,9 +222,9 @@ class BaseForecaster(_BasePtObject_v2):
         ----------
         y : torch.Tensor or list of torch.Tensor
             Model output tensor, in the space of the original target.
-        index : pd.DataFrame
-            As returned by ``_window_index``, one row per forecast step. Used
-            as the frame of the result.
+        index : dict of str to np.ndarray
+            As returned by the datamodule's ``window_index``, one entry per
+            forecast step. Used as the frame of the result.
         time : str
             Name of the time column of the input data.
         group : list of str
@@ -324,10 +276,12 @@ class BaseForecaster(_BasePtObject_v2):
 
         info = dict(info or {})
         y_true = info.pop("y", None)
-        ts = TimeSeries(index, time=time, target=target, group=group or None)
+        ts = TimeSeries(
+            pd.DataFrame(index), time=time, target=target, group=group or None
+        )
         ts.metadata = replace(ts.metadata, is_prediction=True)
         ts.info = info
-        ts.data[f"{time}_origin"] = origin.to_numpy()
+        ts.data[f"{time}_origin"] = origin
         if y_true is not None:
             if isinstance(y_true, (list, tuple)):
                 y_true = torch.stack(list(y_true), dim=-1)
@@ -474,7 +428,7 @@ class BaseForecaster(_BasePtObject_v2):
                 info["y"] = dm.inverse_transform_target(info["y"], windows)
             predictions = self._to_timeseries(
                 dm.inverse_transform_target(predictions["prediction"], windows),
-                index=self._window_index(data, windows, dm.series_times),
+                index=dm.window_index(windows),
                 time=data._time,
                 group=data._group,
                 metadata=data.get_metadata(),
