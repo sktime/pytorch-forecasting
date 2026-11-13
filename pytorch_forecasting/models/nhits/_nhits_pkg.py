@@ -4,7 +4,16 @@ from pytorch_forecasting.models.base._base_object import _BasePtForecaster
 
 
 class NHiTS_pkg(_BasePtForecaster):
-    """NHiTS package container."""
+    """NHiTS package container.
+
+    Examples
+    --------
+    The package container resolves to the user-facing model class:
+
+    >>> from pytorch_forecasting.models.nhits import NHiTS_pkg
+    >>> NHiTS_pkg.get_cls().__name__
+    'NHiTS'
+    """
 
     _tags = {
         "info:name": "NHiTS",
