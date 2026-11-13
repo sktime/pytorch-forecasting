@@ -114,6 +114,7 @@ docs = [
   "nbconvert",
   "recommonmark",
   "docutils",
+  "sphinxcontrib-mermaid",
 ]
 
 github-actions = ["pytest-github-actions-annotate-failures<0.4.3"]
