@@ -59,9 +59,11 @@ class TSMixer(TslibBaseModel):
     @classmethod
     def _pkg(cls):
         """Package containing the model."""
-        from pytorch_forecasting.models.tsmixer._tsmixer_pkg_v2 import TSMixer_pkg_v2
+        from pytorch_forecasting.models.tsmixer._tsmixer_forecaster_v2 import (
+            TSMixerForecaster,
+        )
 
-        return TSMixer_pkg_v2
+        return TSMixerForecaster
 
     def __init__(
         self,
