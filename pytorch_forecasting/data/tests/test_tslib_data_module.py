@@ -269,6 +269,42 @@ def test_tslib_dataset(tslib_data_module):
     assert sample_y.dtype == torch.float32
 
 
+def test_tslib_dataset_preserves_original_time_idx():
+    """Test that dataset windows preserve source timesteps for time indices."""
+    df = pd.DataFrame(
+        {
+            "series_id": [0] * 6,
+            "time_idx": [10, 12, 15, 19, 20, 25],
+            "target": [1.0, 1.2, 1.5, 1.9, 2.0, 2.5],
+            "feature_1": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
+        }
+    )
+
+    ts = TimeSeries(
+        data=df,
+        time="time_idx",
+        target="target",
+        group=["series_id"],
+        num=["feature_1"],
+        known=["feature_1"],
+        unknown=["target"],
+    )
+
+    dm = TslibDataModule(
+        time_series_dataset=ts,
+        context_length=3,
+        prediction_length=2,
+        batch_size=1,
+        train_val_test_split=(1.0, 0.0, 0.0),
+    )
+    dm.setup(stage="fit")
+
+    x, _ = dm.train_dataset[0]
+
+    assert torch.equal(x["history_time_idx"], torch.tensor([10, 12, 15]))
+    assert torch.equal(x["future_time_idx"], torch.tensor([19, 20]))
+
+
 def test_collate_fn(tslib_data_module):
     """Test the collate function in the TslibDataModule to ensure it correctly
     collates the data into batches and properly handles stacking of batches."""
