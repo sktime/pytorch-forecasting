@@ -4,6 +4,8 @@ from lightning import LightningDataModule
 
 from pytorch_forecasting.base._base_pkg import Base_pkg
 from pytorch_forecasting.data import TimeSeries
+from pytorch_forecasting.data.data_module import TslibDataModule
+from pytorch_forecasting.models.moirai._moirai_moe_v2 import MoiraiMoE
 
 
 class MoiraiMoE_pkg_v2(Base_pkg):
@@ -37,14 +39,10 @@ class MoiraiMoE_pkg_v2(Base_pkg):
 
     @classmethod
     def get_cls(cls):
-        from pytorch_forecasting.models.moirai._moirai_moe_v2 import MoiraiMoE
-
         return MoiraiMoE
 
     @classmethod
     def get_datamodule_cls(cls):
-        from pytorch_forecasting.data.data_module import TslibDataModule
-
         return TslibDataModule
 
     def fit(self, *args, **kwargs):

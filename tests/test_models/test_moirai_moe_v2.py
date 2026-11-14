@@ -1,6 +1,7 @@
 """Moirai-MoE adapter tests; no pretrained downloads are required."""
 
 import builtins
+import importlib.util
 import sys
 from types import ModuleType
 from unittest.mock import Mock
@@ -196,8 +197,6 @@ def test_missing_dependency(monkeypatch, metadata):
 
 
 def test_import_without_uni2ts(monkeypatch):
-    import importlib.util
-
     original_import = builtins.__import__
 
     def guarded_import(name, *args, **kwargs):
