@@ -216,3 +216,35 @@ def test_prediction_length(max_prediction_length: int):
         return_index=True,
         return_decoder_lengths=True,
     )
+
+
+def test_nhits_static_reals_forward():
+    """Regression test: NHiTS.forward() must not raise NameError when the dataset
+    introduces static real variables (e.g. via add_target_scales=True) but has no
+    time-varying encoder covariates, i.e. encoder_covariate_size == 0 < static_size.
+    """
+    n_timeseries = 10
+    time_points = 30
+    data = pd.DataFrame(
+        {
+            "target": np.random.rand(time_points * n_timeseries),
+            "time_idx": np.tile(np.arange(time_points), n_timeseries),
+            "group_id": np.repeat(np.arange(n_timeseries), time_points),
+        }
+    )
+    dataset = TimeSeriesDataSet(
+        data,
+        time_idx="time_idx",
+        target="target",
+        group_ids=["group_id"],
+        time_varying_unknown_reals=["target"],
+        max_encoder_length=10,
+        max_prediction_length=5,
+        add_target_scales=True,  # introduces static reals; encoder_covariate_size=0
+    )
+    dataloader = dataset.to_dataloader(train=True, batch_size=4, num_workers=0)
+    model = NHiTS.from_dataset(dataset, hidden_size=8)
+
+    batch, _ = next(iter(dataloader))
+    # must not raise NameError on encoder_features
+    model(batch)
