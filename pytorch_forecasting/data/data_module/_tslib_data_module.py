@@ -614,7 +614,7 @@ class TslibDataModule(BaseTimeSeriesDataModule):
             "target": target,
             "static": series["st"],
             "group": series.get("group", torch.tensor([0])),
-            "length": len(series),
+            "length": len(timestep),
             "time_mask": mask_timestep,
             "cutoff_time": cutoff_time,
             "timestep": timestep,
