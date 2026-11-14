@@ -30,20 +30,25 @@ _CAPABILITY_TAGS = [
 def _clean_model_name(class_name):
     """Derive a clean display name from the registry class name.
 
-    Strips ``_pkg_v2`` and ``_pkg`` suffixes introduced by the packaging
-    layer so that the table shows the canonical model name instead of the
-    internal wrapper name.
+    Strips ``_pkg_v2``, ``_pkg``, and ``Forecaster`` suffixes introduced
+    by the packaging layer so that the table shows the canonical model name
+    instead of the internal wrapper name.
 
     Examples
     --------
     ``TFT_pkg``       -> ``TFT``
     ``DLinear_pkg_v2`` -> ``DLinear_v2``
     ``TFT_pkg_v2``    -> ``TFT_v2``
+    ``TFTForecaster`` -> ``TFT_v2``
+    ``DLinearForecaster`` -> ``DLinear_v2``
     """
     if class_name.endswith("_pkg_v2"):
         return class_name[: -len("_pkg_v2")] + "_v2"
     if class_name.endswith("_pkg"):
         return class_name[: -len("_pkg")]
+    if class_name.endswith("Forecaster"):
+        base = class_name[: -len("Forecaster")]
+        return base if base.endswith("_v2") else base + "_v2"
     return class_name
 
 
