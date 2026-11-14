@@ -425,7 +425,7 @@ def test_static_features_are_split_by_type_in_tslib_output():
     )
 
     dm = TslibDataModule(
-        time_series_dataset=ts,
+        time_series=ts,
         batch_size=2,
         context_length=12,
         prediction_length=8,
