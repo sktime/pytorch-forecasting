@@ -150,9 +150,6 @@ class SCINetForecaster(BaseForecaster):
         -------
         params : list of dict
             Parameters to create testing instances of the class.
-            Each dict is passed as keyword arguments to the forecaster.
-            The key ``"datamodule_cfg"`` inside each dict is forwarded to
-            the datamodule constructor.
         """
         from pytorch_forecasting.metrics import MAE, SMAPE
 
