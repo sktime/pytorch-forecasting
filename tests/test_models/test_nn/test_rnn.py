@@ -51,3 +51,37 @@ def test_zero_length_sequence(klass, rnn_kwargs):
         assert (hidden_state[idx][:, lengths == 0] == 0).all() and (
             hidden_state[idx][:, lengths > 0] != 0
         ).all(), "Hidden state should be zero for zero-length sequences"
+
+
+@pytest.mark.parametrize("klass", [LSTM, GRU])
+def test_zero_length_preserves_provided_initial_state(klass):
+    """Zero-length sequences must keep the matching provided initial state.
+
+    ``handle_no_encoding`` used ``masked_scatter``, which copies a flattened
+    prefix of the source into True positions rather than the same batch rows.
+    LSTM also scattered the hidden tensor into the cell slot. Callers such as
+    ``TemporalFusionTransformer`` pass a distinct initial hidden and cell from
+    ``static_context_initial_hidden_lstm`` / ``static_context_initial_cell_lstm``.
+    """
+    torch.manual_seed(0)
+    batch_size = 4
+    seq_len = 5
+    input_size = 2
+    hidden_size = 6
+    rnn = klass(input_size=input_size, hidden_size=hidden_size, batch_first=True)
+    x = torch.randn(batch_size, seq_len, input_size)
+    lengths = torch.tensor([5, 0, 3, 0])
+    zero = lengths == 0
+    h0 = torch.randn(1, batch_size, hidden_size)
+
+    if klass is LSTM:
+        c0 = torch.randn(1, batch_size, hidden_size)
+        assert not torch.allclose(
+            h0[:, zero], c0[:, zero]
+        ), "Test setup requires distinct initial hidden and cell states"
+        _, (hn, cn) = rnn(x, hx=(h0, c0), lengths=lengths, enforce_sorted=False)
+        assert torch.allclose(hn[:, zero], h0[:, zero])
+        assert torch.allclose(cn[:, zero], c0[:, zero])
+    else:
+        _, hn = rnn(x, hx=h0, lengths=lengths, enforce_sorted=False)
+        assert torch.allclose(hn[:, zero], h0[:, zero])

@@ -186,8 +186,10 @@ class LSTM(RNN, nn.LSTM):
         initial_hidden_state: HiddenState,
     ) -> HiddenState:
         hidden, cell = hidden_state
-        hidden = hidden.masked_scatter(no_encoding, initial_hidden_state[0])
-        cell = cell.masked_scatter(no_encoding, initial_hidden_state[0])
+        # Index-aligned restore. ``masked_scatter`` copies a flattened prefix of
+        # the source into True positions, so the wrong batch rows would be written.
+        hidden = torch.where(no_encoding, initial_hidden_state[0], hidden)
+        cell = torch.where(no_encoding, initial_hidden_state[1], cell)
         return hidden, cell
 
     def init_hidden_state(self, x: torch.Tensor) -> HiddenState:
@@ -226,7 +228,7 @@ class GRU(RNN, nn.GRU):
         no_encoding: torch.BoolTensor,
         initial_hidden_state: HiddenState,
     ) -> HiddenState:
-        return hidden_state.masked_scatter(no_encoding, initial_hidden_state)
+        return torch.where(no_encoding, initial_hidden_state, hidden_state)
 
     def init_hidden_state(self, x: torch.Tensor) -> HiddenState:
         if self.batch_first:
