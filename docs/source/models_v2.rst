@@ -190,6 +190,8 @@ supported. Only target history is used; covariates are ignored.
     )
     samples = forecaster.predict(dataset, mode="raw")["samples"]
 
+Each series produces one forecast after its last observed time point. To forecast
+existing historical windows, pass a dataloader from a configured TslibDataModule.
 Point forecasts are sample means. Quantiles are computed from the samples.
 Raw samples have shape ``(batch, samples, horizon, targets)``. Point and quantile
 modes omit the target axis for univariate series. Predictions are stochastic;

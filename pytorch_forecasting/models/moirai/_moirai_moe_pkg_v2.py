@@ -1,6 +1,9 @@
 """Package container for zero-shot Moirai-MoE inference."""
 
 from lightning import LightningDataModule
+import numpy as np
+import torch
+from torch.utils.data import DataLoader
 
 from pytorch_forecasting.base._base_pkg import Base_pkg
 from pytorch_forecasting.data import TimeSeries
@@ -14,6 +17,8 @@ class MoiraiMoE_pkg_v2(Base_pkg):
     Pass a ``TimeSeries`` with ``datamodule_cfg``, or a ``TslibDataModule``,
     for the first prediction so the model can obtain its metadata. Subsequent
     predictions also accept a DataLoader with the same context and target layout.
+    A TimeSeries or TslibDataModule forecasts after the last observed time point
+    in each series. Pass a DataLoader to predict over existing windows instead.
     ``model_cfg`` accepts the parameters of :class:`MoiraiMoE`.
     """
 
@@ -55,6 +60,36 @@ class MoiraiMoE_pkg_v2(Base_pkg):
         """Initialize from dataset metadata and use the standard prediction pipeline."""
         if isinstance(data, TimeSeries):
             data = self._build_datamodule(data)
+        if isinstance(data, TslibDataModule):
+            if "y" in (kwargs.get("return_info") or []):
+                raise ValueError("Future forecasts have no target values to return.")
+            windows = []
+            for idx in range(len(data.time_series_dataset)):
+                series = data._preprocess_data(idx)
+                order = np.argsort(series["timestep"])
+                observed = torch.as_tensor(order[series["time_mask"][order].numpy()])
+                if len(observed) < data.context_length:
+                    raise ValueError(
+                        f"Series {idx} has fewer than {data.context_length} "
+                        "observed time points."
+                    )
+                history = observed[-data.context_length :]
+                x = {
+                    "history_target": series["target"][history],
+                    "history_mask": series["time_mask"][history],
+                    "groups": series["group"],
+                    "prediction_start_idx": torch.tensor([len(observed)]),
+                }
+                if "target_scale" in series:
+                    x["target_scale"] = series["target_scale"]
+                windows.append((x, torch.full((data.prediction_length,), float("nan"))))
+            if not windows:
+                raise ValueError("Cannot forecast an empty time series dataset.")
+            forecast_data = DataLoader(
+                windows, batch_size=data.batch_size, num_workers=data.num_workers
+            )
+        else:
+            forecast_data = data
         if self.model is None:
             if not isinstance(data, LightningDataModule):
                 raise ValueError(
@@ -75,5 +110,12 @@ class MoiraiMoE_pkg_v2(Base_pkg):
                     "prediction length, and target dimension. Create a new forecaster "
                     "for different metadata."
                 )
-        kwargs.setdefault("trainer_kwargs", self.trainer_cfg.copy())
-        return super().predict(data, output_dir=output_dir, **kwargs)
+        trainer_kwargs = dict(kwargs.pop("trainer_kwargs", self.trainer_cfg) or {})
+        if isinstance(trainer_kwargs.get("callbacks"), list):
+            trainer_kwargs["callbacks"] = trainer_kwargs["callbacks"].copy()
+        return super().predict(
+            forecast_data,
+            output_dir=output_dir,
+            trainer_kwargs=trainer_kwargs,
+            **kwargs,
+        )

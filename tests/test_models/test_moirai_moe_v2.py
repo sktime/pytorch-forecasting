@@ -6,6 +6,7 @@ import sys
 from types import ModuleType
 from unittest.mock import Mock
 
+from lightning.pytorch.callbacks import Callback
 import numpy as np
 import pandas as pd
 import pytest
@@ -256,8 +257,122 @@ def test_package_prediction(backend, dataset, use_datamodule):
         if mode == "raw":
             assert out["samples"].shape[1:] == (5, 3, 1)
     backend.from_pretrained.assert_called_once()
+    pkg.datamodule.setup("predict")
     out = pkg.predict(pkg.datamodule.predict_dataloader())
     assert out["prediction"].shape[-1] == 3
+
+
+@pytest.mark.parametrize("use_datamodule", [False, True])
+def test_forecast_uses_latest_observed_history(backend, use_datamodule):
+    data = TimeSeries(
+        pd.DataFrame(
+            {
+                "group": ["a"] * 10 + ["b"] * 12,
+                "time": list(range(10)) + list(range(12)),
+                "value": list(range(10)) + list(range(100, 112)),
+            }
+        ),
+        data_future=pd.DataFrame(
+            {"group": ["a", "a", "b", "b"], "time": [10, 11, 12, 13]}
+        ),
+        time="time",
+        group=["group"],
+        target=["value"],
+    )
+    config = {"context_length": 8, "prediction_length": 3, "batch_size": 2}
+    pkg = MoiraiMoE_pkg_v2(
+        model_cfg={"num_samples": 5},
+        datamodule_cfg=config,
+        trainer_cfg={
+            "accelerator": "cpu",
+            "logger": False,
+            "enable_progress_bar": False,
+        },
+    )
+    source = TslibDataModule(data, **config) if use_datamodule else data
+    out = pkg.predict(source, return_info=["x", "index"])
+    assert out["prediction"].shape == (2, 3)
+    assert out["index"].tolist() == [[0, 10], [1, 12]]
+    assert out["x"]["history_target"].squeeze(-1).tolist() == [
+        list(range(2, 10)),
+        list(range(104, 112)),
+    ]
+    assert torch.isfinite(pkg.model.forecast.inputs["past_target"]).all()
+
+
+def test_forecast_requires_sufficient_history(backend, dataset):
+    pkg = MoiraiMoE_pkg_v2(
+        datamodule_cfg={"context_length": 61, "prediction_length": 3}
+    )
+    with pytest.raises(ValueError, match="fewer than 61"):
+        pkg.predict(dataset)
+    backend.from_pretrained.assert_not_called()
+
+
+def test_forecast_sorts_history_by_time(backend):
+    data = TimeSeries(
+        pd.DataFrame({"time": [2, 0, 3, 1], "value": [2.0, 0.0, 3.0, 1.0]}),
+        time="time",
+        target=["value"],
+    )
+    pkg = MoiraiMoE_pkg_v2(
+        datamodule_cfg={"context_length": 4, "prediction_length": 2},
+        trainer_cfg={
+            "accelerator": "cpu",
+            "logger": False,
+            "enable_progress_bar": False,
+        },
+    )
+    out = pkg.predict(data, return_info=["x", "index"])
+    assert out["x"]["history_target"].flatten().tolist() == [0, 1, 2, 3]
+    assert out["index"].tolist() == [[0, 4]]
+
+
+def test_forecast_preserves_target_scale(backend, dataset, monkeypatch):
+    data = TslibDataModule(dataset, context_length=8, prediction_length=3)
+    preprocess = data._preprocess_data
+
+    def with_scale(idx):
+        series = preprocess(idx)
+        series["target_scale"] = {
+            "scale": torch.tensor([2.0]),
+            "center": torch.tensor([10.0]),
+        }
+        return series
+
+    monkeypatch.setattr(data, "_preprocess_data", with_scale)
+    pkg = MoiraiMoE_pkg_v2(
+        model_cfg={"num_samples": 5},
+        trainer_cfg={
+            "accelerator": "cpu",
+            "logger": False,
+            "enable_progress_bar": False,
+        },
+    )
+    out = pkg.predict(data)
+    torch.testing.assert_close(out["prediction"], torch.full((1, 3), 14.0))
+
+
+def test_forecast_has_no_future_targets(backend, dataset):
+    pkg = MoiraiMoE_pkg_v2(datamodule_cfg={"context_length": 8, "prediction_length": 3})
+    with pytest.raises(ValueError, match="no target values"):
+        pkg.predict(dataset, return_info=["y"])
+
+
+@pytest.mark.parametrize("override", [False, True])
+def test_predict_does_not_mutate_callbacks(backend, dataset, override):
+    callbacks = [Callback()]
+    config = {"accelerator": "cpu", "logger": False, "enable_progress_bar": False}
+    pkg = MoiraiMoE_pkg_v2(
+        model_cfg={"num_samples": 5},
+        datamodule_cfg={"context_length": 8, "prediction_length": 3},
+        trainer_cfg=config if override else {**config, "callbacks": callbacks},
+    )
+    kwargs = {"trainer_kwargs": {**config, "callbacks": callbacks}} if override else {}
+    original = callbacks.copy()
+    pkg.predict(dataset, **kwargs)
+    pkg.predict(dataset, **kwargs)
+    assert callbacks == original
 
 
 def test_first_prediction_needs_metadata():
