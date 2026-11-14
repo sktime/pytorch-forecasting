@@ -66,9 +66,11 @@ class DLinear(TslibBaseModel):
     @classmethod
     def _pkg(cls):
         """Package containing the model."""
-        from pytorch_forecasting.models.dlinear._dlinear_pkg_v2 import DLinear_pkg_v2
+        from pytorch_forecasting.models.dlinear._dlinear_forecaster_v2 import (
+            DLinearForecaster,
+        )
 
-        return DLinear_pkg_v2
+        return DLinearForecaster
 
     def __init__(
         self,
