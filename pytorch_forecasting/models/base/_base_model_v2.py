@@ -129,7 +129,7 @@ class BaseModel(LightningModule):
         mode: str = "prediction",
         return_info: list[str] | None = None,
         mode_kwargs: dict[str, Any] = None,
-        trainer_kwargs: dict[str, Any] = None,
+        trainer: Trainer | None = None,
     ) -> dict[str, torch.Tensor]:
         """
         Generate predictions for new data using the `lightning.Trainer`.
@@ -144,27 +144,22 @@ class BaseModel(LightningModule):
             A list of additional information to return.
         mode_kwargs : dict[str, Any]
             Additional arguments for `to_prediction`/`to_quantiles`.
-        trainer_kwargs: dict[str, Any]
-            Additional arguments for `Trainer`.
+        trainer : lightning.Trainer, optional
+            Trainer to predict with. Defaults to ``Trainer()``.
 
         Returns
         -------
         dict[str, torch.Tensor]
             A dictionary of prediction results.
         """
-        trainer_kwargs = trainer_kwargs or {}
+        trainer = trainer or Trainer()
         predict_callback = PredictCallback(
             mode=mode, return_info=return_info, mode_kwargs=mode_kwargs
         )
 
-        callbacks = trainer_kwargs.get("callbacks", [])
-        if not isinstance(callbacks, list):
-            callbacks = [callbacks]
-        callbacks.append(predict_callback)
-        trainer_kwargs["callbacks"] = callbacks
-
-        trainer = Trainer(**trainer_kwargs)
+        trainer.callbacks.append(predict_callback)
         trainer.predict(self, dataloaders=dataloader)
+        trainer.callbacks.remove(predict_callback)
 
         return predict_callback.result
 

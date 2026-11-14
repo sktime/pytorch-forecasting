@@ -35,11 +35,11 @@ class Samformer(BaseModel):
     @classmethod
     def _pkg(cls):
         """Return the package class for this model."""
-        from pytorch_forecasting.models.samformer._samformer_pkg_v2 import (
-            Samformer_pkg_v2,
+        from pytorch_forecasting.models.samformer._samformer_forecaster_v2 import (
+            SamformerForecaster,
         )
 
-        return Samformer_pkg_v2
+        return SamformerForecaster
 
     def __init__(
         self,
@@ -67,7 +67,9 @@ class Samformer(BaseModel):
             lr_scheduler_params=lr_scheduler_params,
         )
 
-        self.save_hyperparameters(ignore=["loss", "logging_metrics", "optimizer"])
+        self.save_hyperparameters(
+            ignore=["loss", "logging_metrics", "optimizer", "metadata"]
+        )
         self.metadata = metadata
         self.n_quantiles = 1
 

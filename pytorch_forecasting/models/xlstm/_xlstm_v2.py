@@ -62,9 +62,11 @@ class xLSTMTime_v2(BaseModel):
     @classmethod
     def _pkg(cls):
         """Package for the model."""
-        from pytorch_forecasting.models.xlstm._xlstm_pkg_v2 import xLSTMTime_pkg_v2
+        from pytorch_forecasting.models.xlstm._xlstm_forecaster_v2 import (
+            xLSTMTimeForecaster,
+        )
 
-        return xLSTMTime_pkg_v2
+        return xLSTMTimeForecaster
 
     def __init__(
         self,

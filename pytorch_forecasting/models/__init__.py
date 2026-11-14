@@ -10,7 +10,7 @@ from pytorch_forecasting.models.base import (
 )
 from pytorch_forecasting.models.baseline import Baseline
 from pytorch_forecasting.models.deepar import DeepAR
-from pytorch_forecasting.models.frets import FreTS, FreTS_pkg_v2
+from pytorch_forecasting.models.frets import FreTS, FreTSForecaster
 from pytorch_forecasting.models.mlp import DecoderMLP
 from pytorch_forecasting.models.modern_tcn import ModernTCN
 from pytorch_forecasting.models.nbeats import NBeats, NBeatsKAN
@@ -19,12 +19,12 @@ from pytorch_forecasting.models.nn import GRU, LSTM, MultiEmbedding, get_rnn
 from pytorch_forecasting.models.patch_tst import (
     PatchTST,
     PatchTST_pkg,
-    PatchTST_pkg_v2,
     PatchTST_v2,
+    PatchTSTForecaster,
 )
 from pytorch_forecasting.models.rnn import RecurrentNetwork
-from pytorch_forecasting.models.scinet import SCINet_pkg_v2, SCINet_v2
-from pytorch_forecasting.models.softs import SOFTS, SOFTS_pkg_v2
+from pytorch_forecasting.models.scinet import SCINet_v2, SCINetForecaster
+from pytorch_forecasting.models.softs import SOFTS, SOFTSForecaster
 from pytorch_forecasting.models.temporal_fusion_transformer import (
     TemporalFusionTransformer,
 )
@@ -40,7 +40,7 @@ __all__ = [
     "PatchTST",
     "PatchTST_v2",
     "PatchTST_pkg",
-    "PatchTST_pkg_v2",
+    "PatchTSTForecaster",
     "TemporalFusionTransformer",
     "RecurrentNetwork",
     "DeepAR",
@@ -59,10 +59,10 @@ __all__ = [
     "UniTS",
     "xLSTMTime",
     "SOFTS",
-    "SOFTS_pkg_v2",
+    "SOFTSForecaster",
     "SCINet_v2",
-    "SCINet_pkg_v2",
+    "SCINetForecaster",
     "ModernTCN",
     "FreTS",
-    "FreTS_pkg_v2",
+    "FreTSForecaster",
 ]

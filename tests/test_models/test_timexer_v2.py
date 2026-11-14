@@ -176,7 +176,7 @@ def basic_timeseries_dataset(sample_multivariate_data):
 def basic_tslib_data_module(basic_timeseries_dataset):
     """Create a basic TslibDataModule for testing."""
     return TslibDataModule(
-        time_series_dataset=basic_timeseries_dataset,
+        time_series=basic_timeseries_dataset,
         batch_size=2,
         context_length=12,
         prediction_length=8,
@@ -425,7 +425,7 @@ def test_static_features_are_split_by_type_in_tslib_output():
     )
 
     dm = TslibDataModule(
-        time_series_dataset=ts,
+        time_series=ts,
         batch_size=2,
         context_length=12,
         prediction_length=8,
