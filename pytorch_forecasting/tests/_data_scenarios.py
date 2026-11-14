@@ -10,8 +10,6 @@ from pytorch_forecasting.data import EncoderNormalizer, GroupNormalizer, NaNLabe
 from pytorch_forecasting.data.examples import generate_ar_data, get_stallion_data
 from pytorch_forecasting.data.timeseries import TimeSeries
 
-torch.manual_seed(23)
-
 
 def data_with_covariates():
     data = get_stallion_data()
