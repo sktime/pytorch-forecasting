@@ -75,6 +75,7 @@ The :ref:`Tutorials <tutorials>` section provides guidance on how to use models 
    installation
    api
    model_list
+   developers
    CHANGELOG
 
 
