@@ -158,6 +158,48 @@ Here is a complete example of the V2 workflow using the Temporal Fusion Transfor
     trainer.fit(model, data_module)
 
 
+Zero-shot Moirai-MoE forecasts
+-----------------------------
+
+``MoiraiMoE`` wraps Salesforce's pretrained Moirai-MoE through the optional
+``uni2ts`` package. Install ``uni2ts>=2.0,<3`` separately in a Python 3.10--3.12
+environment. Its PyTorch and NumPy requirements are narrower than those of
+``pytorch-forecasting``; use a dedicated environment for this model.
+
+The first prediction downloads the small checkpoint from Hugging Face unless
+``model_id`` points to a local pretrained directory or ``module`` supplies an
+initialized ``MoiraiMoEModule`` backbone. Calling ``fit`` is not required or
+supported. Only target history is used; covariates are ignored.
+
+.. code-block:: python
+
+    from pytorch_forecasting.models.moirai import MoiraiMoE_pkg_v2
+
+    # dataset is a v2 TimeSeries containing the target history.
+    forecaster = MoiraiMoE_pkg_v2(
+        model_cfg={
+            "model_id": "Salesforce/moirai-moe-1.0-R-small",
+            "num_samples": 100,
+        },
+        datamodule_cfg={"context_length": 168, "prediction_length": 24},
+        trainer_cfg={"accelerator": "cpu", "logger": False},
+    )
+    means = forecaster.predict(dataset)
+    intervals = forecaster.predict(
+        dataset, mode="quantiles", mode_kwargs={"quantiles": [0.1, 0.5, 0.9]}
+    )
+    samples = forecaster.predict(dataset, mode="raw")["samples"]
+
+Point forecasts are sample means. Quantiles are computed from the samples.
+Raw samples have shape ``(batch, samples, horizon, targets)``. Point and quantile
+modes omit the target axis for univariate series. Predictions are stochastic;
+set ``torch.manual_seed`` before prediction when reproducibility is needed.
+Missing or masked history values are passed to uni2ts as unobserved values.
+
+See the `upstream Moirai-MoE documentation
+<https://github.com/SalesforceAIResearch/uni2ts/tree/main/project/moirai-moe-1>`_
+for checkpoint details.
+
 Details and available models
 -------------------------------
 
