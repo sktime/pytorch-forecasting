@@ -13,6 +13,7 @@ import yaml
 
 from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.models.base._base_object import _BasePtObject_v2
+from pytorch_forecasting.utils._validation import _check_type
 
 
 def _clone_trainer(trainer: Trainer) -> Trainer:
@@ -46,6 +47,8 @@ class BaseForecaster(_BasePtObject_v2):
         A configured but data-less datamodule; ``fit`` attaches the data with
         ``with_data``. Defaults to ``get_datamodule_cls()()``, or to the
         ``datamodule_cfg.pkl`` saved next to ``ckpt_path`` if loading.
+        Must be an instance of ``get_datamodule_cls()`` or a subclass,
+        not a datamodule class or configuration dictionary.
     ckpt_path : Union[str, Path], optional
         Path to the checkpoint from which to load the model. Defaults to None.
     """
@@ -53,12 +56,13 @@ class BaseForecaster(_BasePtObject_v2):
     def __init__(
         self,
         trainer: Trainer | None = None,
-        datamodule: Any = None,
+        datamodule: LightningDataModule | None = None,
         ckpt_path: str | Path | None = None,
     ):
         self.trainer = trainer
         self.datamodule = datamodule
         self.ckpt_path = ckpt_path
+        self._validate_trainer_and_datamodule()
         super().__init__()
 
         self._loaded_datamodule_cfg = self._load_config(
@@ -77,6 +81,30 @@ class BaseForecaster(_BasePtObject_v2):
         self._is_fitted = False
         if self.ckpt_path:
             self._build_model(metadata=self.metadata)
+
+    def _validate_trainer_and_datamodule(self, trainer: Trainer | None = None):
+        """Reject incompatible configuration before loading or building anything."""
+        _check_type(
+            self.trainer if trainer is None else trainer,
+            Trainer,
+            "trainer",
+            allow_none=True,
+            hint="Pass a configured lightning.Trainer(...), not trainer settings.",
+        )
+        if self.datamodule is not None:
+            dm_cls = self.get_datamodule_cls()
+            if inspect.isclass(self.datamodule):
+                hint = (
+                    f"Pass a configured {dm_cls.__name__}(...) instance, "
+                    f"not the class {self.datamodule.__name__}."
+                )
+            else:
+                hint = (
+                    f"{type(self).__name__} requires an instance of "
+                    f"{type(self).__name__}.get_datamodule_cls() "
+                    f"({dm_cls.__name__})."
+                )
+            _check_type(self.datamodule, dm_cls, "datamodule", hint=hint)
 
     @staticmethod
     def _load_config(
@@ -333,6 +361,7 @@ class BaseForecaster(_BasePtObject_v2):
         Optional[Path]
             The path to the best model checkpoint if `save_ckpt=True`, else None.
         """
+        self._validate_trainer_and_datamodule(trainer)
         self.datamodule_ = self._build_datamodule(data)
 
         # the model is built only here, because only now are its input
