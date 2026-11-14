@@ -5,6 +5,7 @@ Getting started
    **Try the API v2 pre-release!**
 
    | A New API version 2 is in development. Try it out before release: :doc:`v2 API Reference <api_v2>`
+   | Migrating an existing v1 pipeline? See the :doc:`v1 to v2 migration guide <migration-v1-v2>`.
    | **Caution: v2 is WIP and unstable. Not yet production-ready.**
 
 
@@ -19,6 +20,7 @@ Installation
 You can install ``pytorch-forecasting`` using:
 
 .. code-block:: bash
+
     pip install pytorch-forecasting
 
 For special cases (like specific ``torch`` versions or to install the package for the use of the MQF2 loss), please look at out :doc:`Installation Guide <installation>`.
@@ -144,3 +146,4 @@ Main API
 
     API v1 <api>
     API v2 <api_v2>
+    Migration guide <migration-v1-v2>
