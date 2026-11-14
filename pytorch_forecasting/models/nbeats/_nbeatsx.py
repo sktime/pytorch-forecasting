@@ -6,7 +6,13 @@ from torch import nn
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import NaNLabelEncoder
 from pytorch_forecasting.layers._nbeats._nbeatsx import NBEATSxBlock
-from pytorch_forecasting.metrics import MASE, DistributionLoss, MultiLoss, QuantileLoss
+from pytorch_forecasting.metrics import (
+    MASE,
+    CrossEntropy,
+    DistributionLoss,
+    MultiLoss,
+    QuantileLoss,
+)
 from pytorch_forecasting.models.base_model import BaseModelWithCovariates
 from pytorch_forecasting.models.nbeats import _nbeatsx_pkg
 from pytorch_forecasting.models.nn import MultiEmbedding
@@ -45,6 +51,10 @@ class NBeatsX(BaseModelWithCovariates):
         Fixed decoder length, inferred by ``from_dataset``.
     dropout : float, default=0.1
         Dropout probability after each hidden layer.
+    backcast_loss_ratio : float, default=0.1
+        Weight of normalized-space mean squared backcast error in the training
+        objective. Set to zero for forecast-only training; the final backcast
+        head will then remain untrained unless its weights are shared.
     target : str, default="target"
         Target column in ``x_reals``, inferred by ``from_dataset``.
     loss : MultiHorizonMetric, optional
@@ -102,6 +112,7 @@ class NBeatsX(BaseModelWithCovariates):
         context_length: int = 1,
         prediction_length: int = 1,
         dropout: float = 0.1,
+        backcast_loss_ratio: float = 0.1,
         target: str = "target",
         static_categoricals: list[str] | None = None,
         static_reals: list[str] | None = None,
@@ -129,6 +140,8 @@ class NBeatsX(BaseModelWithCovariates):
             raise ValueError("context_length and prediction_length must be positive")
         if not 0 <= dropout < 1:
             raise ValueError("dropout must be in [0, 1)")
+        if not 0 <= backcast_loss_ratio < float("inf"):
+            raise ValueError("backcast_loss_ratio must be finite and nonnegative")
 
         static_categoricals = static_categoricals or []
         static_reals = static_reals or []
@@ -150,7 +163,7 @@ class NBeatsX(BaseModelWithCovariates):
             raise ValueError("target must not be a decoder or static variable")
         if loss is None:
             loss = MASE()
-        if isinstance(loss, (DistributionLoss, QuantileLoss, MultiLoss)):
+        if isinstance(loss, (CrossEntropy, DistributionLoss, QuantileLoss, MultiLoss)):
             raise ValueError("NBeatsX supports single-target point losses only")
 
         self.save_hyperparameters(ignore=["loss"])
@@ -277,8 +290,25 @@ class NBeatsX(BaseModelWithCovariates):
                 (target - residual).unsqueeze(-1), target_scale=x["target_scale"]
             ),
             block_forecasts=block_forecasts.detach(),
-            block_backcasts=torch.stack(backcasts, dim=-1).detach(),
+            block_backcasts=torch.stack(backcasts, dim=-1),
         )
+
+    def step(self, x, y, batch_idx, **kwargs):
+        """Train the forecast and the normalized backcast reconstruction."""
+        log, out = super().step(x, y, batch_idx, **kwargs)
+        if not self.predicting and self.hparams.backcast_loss_ratio > 0:
+            target = x["encoder_cont"][..., self.target_positions].squeeze(-1)
+            residual = target - out.block_backcasts.sum(dim=-1)
+            backcast_loss = residual.square().mean()
+            log["loss"] = log["loss"] + self.hparams.backcast_loss_ratio * backcast_loss
+            self.log(
+                f"{self.current_stage}_backcast_loss",
+                backcast_loss.detach(),
+                on_step=self.training,
+                on_epoch=True,
+                batch_size=target.size(0),
+            )
+        return log, out
 
     @classmethod
     def from_dataset(cls, dataset: TimeSeriesDataSet, **kwargs):

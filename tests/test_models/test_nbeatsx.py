@@ -11,7 +11,7 @@ import torch
 from pytorch_forecasting import NBeatsX, TimeSeriesDataSet
 from pytorch_forecasting.data import TorchNormalizer
 from pytorch_forecasting.layers._nbeats._nbeatsx import NBEATSxBlock
-from pytorch_forecasting.metrics import MAE, QuantileLoss
+from pytorch_forecasting.metrics import MAE, CrossEntropy, QuantileLoss
 from pytorch_forecasting.models.nbeats import NBeatsX_pkg
 
 
@@ -197,6 +197,9 @@ def test_feature_combinations(features):
         ({"num_blocks": [1, 2]}, "length 1"),
         ({"context_length": 5}, "match the dataset"),
         ({"loss": QuantileLoss()}, "point losses"),
+        ({"loss": CrossEntropy()}, "point losses"),
+        ({"backcast_loss_ratio": -1}, "backcast_loss_ratio"),
+        ({"backcast_loss_ratio": float("nan")}, "backcast_loss_ratio"),
     ],
 )
 def test_invalid_configuration(dataset, kwargs, match):
@@ -268,3 +271,24 @@ def test_package_registration():
     assert NBeatsX._pkg() is NBeatsX_pkg
     assert NBeatsX_pkg.get_cls() is NBeatsX
     assert NBeatsX_pkg.get_class_tag("capability:exogenous")
+
+
+@pytest.mark.parametrize(
+    "stack_types", [["generic"], ["trend", "seasonality", "exogenous"]]
+)
+def test_training_updates_last_backcast(dataset, stack_types):
+    model = make_model(dataset, stack_types=stack_types, num_blocks=[1])
+    initial = model.net_blocks[-1].theta_b_fc.bias.detach().clone()
+    trainer = pl.Trainer(
+        max_epochs=1,
+        limit_train_batches=1,
+        accelerator="cpu",
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+        enable_model_summary=False,
+    )
+    trainer.fit(model, train_dataloaders=dataset.to_dataloader(batch_size=4))
+    updated = model.net_blocks[-1].theta_b_fc.bias.detach()
+    assert torch.isfinite(updated).all()
+    assert not torch.equal(initial, updated)
