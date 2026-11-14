@@ -10,7 +10,10 @@ from sklearn.preprocessing import (
 import torch
 
 from pytorch_forecasting import GroupNormalizer, MultiNormalizer, NaNLabelEncoder
-from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
+from pytorch_forecasting.data.data_module import (
+    EncoderDecoderTimeSeriesDataModule,
+    TslibDataModule,
+)
 from pytorch_forecasting.data.encoders import EncoderNormalizer, TorchNormalizer
 from pytorch_forecasting.data.timeseries import TimeSeries
 
@@ -455,6 +458,49 @@ def test_different_train_val_test_split(sample_timeseries_data):
     assert len(dm._train_indices) == expected_train
     assert len(dm._val_indices) == expected_val
     assert len(dm._test_indices) == total_series - expected_train - expected_val
+
+
+@pytest.mark.parametrize(
+    "num_groups, split, expected_sizes",
+    [
+        (3, (0.7, 0.15, 0.15), (1, 1, 1)),
+        (4, (0.7, 0.15, 0.15), (2, 1, 1)),
+        (5, (0.7, 0.15, 0.15), (3, 1, 1)),
+        (6, (0.7, 0.15, 0.15), (4, 1, 1)),
+        (7, (0.7, 0.15, 0.15), (4, 1, 2)),
+        (4, (0.8, 0.2), (3, 1, 0)),
+    ],
+)
+@pytest.mark.parametrize(
+    "datamodule_cls, length_kwargs",
+    [
+        (
+            EncoderDecoderTimeSeriesDataModule,
+            {"max_encoder_length": 8, "max_prediction_length": 2},
+        ),
+        (TslibDataModule, {"context_length": 8, "prediction_length": 2}),
+    ],
+)
+def test_few_series_split_keeps_validation(
+    datamodule_cls, length_kwargs, num_groups, split, expected_sizes
+):
+    """Rounding the split down must not leave validation without a series.
+
+    With 3 to 6 series and the default split, ``int`` gave validation no series,
+    so no validation ran and nothing monitoring ``val_loss`` was ever saved.
+    """
+    dm = datamodule_cls(
+        time_series=make_timeseries(num_groups=num_groups, seq_length=30),
+        batch_size=2,
+        train_val_test_split=split,
+        **length_kwargs,
+    )
+    dm.setup("fit")
+
+    train, val, test = dm._train_indices, dm._val_indices, dm._test_indices
+    assert (len(train), len(val), len(test)) == expected_sizes
+    assert sorted(torch.cat([train, val, test]).tolist()) == list(range(num_groups))
+    assert len(dm.val_dataset) > 0
 
 
 @pytest.mark.parametrize(
