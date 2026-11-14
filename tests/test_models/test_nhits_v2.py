@@ -1,7 +1,7 @@
 """NHiTS v2 tests that the generic v2 test framework does not cover.
 
 The ``forward`` / ``fit`` / ``predict`` contract, checkpointing and the
-architecture and loss variants listed in ``NHiTS_pkg_v2.get_test_train_params``
+architecture and loss variants listed in ``NHiTSForecaster.get_test_train_params``
 are all exercised by ``pytorch_forecasting.tests.test_all_v2``. This module only
 covers behaviour that the framework cannot reach:
 
@@ -97,7 +97,7 @@ def _make_datamodule(df, context_length, prediction_length, batch_size):
         unknown=["value"],
     )
     dm = EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=ts,
+        time_series=ts,
         max_encoder_length=context_length,
         max_prediction_length=prediction_length,
         batch_size=batch_size,
