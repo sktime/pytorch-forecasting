@@ -12,7 +12,7 @@ We are currently developing version 2 of PyTorch Forecasting. The primary object
 The key structural changes and design philosophies driving V2 include:
 
 * **Decoupling Models and Data Structures:** In the original API, models are heavily tightly coupled with the :py:class:`~data.timeseries.TimeSeriesDataSet` class. V2 systematically reduces this strict dependency. By decoupling the forecasting models from specific data-handling classes, the models become more modular and can interface more seamlessly with standard PyTorch tensors, data loaders, and external data pipelines.
-* **Unified API with Exchangeable Models:** V2 introduces a high-level Package wrapper providing a standardized ``fit()`` and ``predict()`` workflow, making it effortless to swap between different forecasting architectures. Crucially, this does not replace the PyTorch Lightning interface—advanced users retain full access to interact with the underlying models directly at a lower level.
+* **Unified API with Exchangeable Models:** V2 introduces a high-level Forecaster wrapper providing a standardized ``fit()`` and ``predict()`` workflow, making it effortless to swap between different forecasting architectures. Crucially, this does not replace the PyTorch Lightning interface—advanced users retain full access to interact with the underlying models directly at a lower level.
 * **Simplified User Journey:** Consequently, these architectural changes drastically reduce the amount of boilerplate code required to set up data, initialize models, and generate predictions, allowing users to move from raw data to forecasting more efficiently.
 
 The New Layered Architecture
@@ -23,7 +23,7 @@ To achieve this decoupling and streamline the user journey, API-v2 introduces a 
 * **D1 Layer (Dataset Layer):** A foundational dataset layer responsible for ingesting raw data and converting it into PyTorch tensors. It also extracts and stores fundamental metadata, such as static variables.
 * **D2 Layer (DataModule Layer):** Implemented as a PyTorch Lightning ``LightningDataModule``, this layer handles all data preprocessing, instantiates the dataloaders, and collects the necessary structural information (e.g., the number of categorical variables) required to properly initialize the forecasting models.
 * **Model Layer:** Implemented as a PyTorch Lightning ``LightningModule``, this layer contains the pure PyTorch implementation of the core forecasting algorithms. It remains entirely agnostic to the complexities of the data ingestion pipelines.
-* **Package Layer:** Acting as a higher-level wrapper around the underlying layers, this component manages the orchestration of the workflow. It handles the simultaneous initialization of the layers, exposes the unified ``fit`` and ``predict`` interfaces, and houses the fixtures utilized for testing.
+* **Forecaster Layer:** Acting as a higher-level wrapper around the underlying layers, this component manages the orchestration of the workflow. It handles the initialization of the layers, exposes the unified ``fit`` and ``predict`` interfaces, and houses the fixtures utilized for testing.
 
 Metrics in V2
 -------------
@@ -48,7 +48,7 @@ Join the discussion and track our progress on GitHub:
 
     Data <data_v2>
     Models <models_v2>
-    Package <pkg_v2>
+    Forecasters <forecaster_v2>
     Metrics <metrics>
     Utils <utils>
     Tutorials <tutorials_v2>
