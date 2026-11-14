@@ -124,7 +124,7 @@ Here is a complete example of the V2 workflow using the Temporal Fusion Transfor
 
     # create the `data_module` that handles the dataloaders and preprocessing
     data_module = EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=dataset,
+        time_series=dataset,
         max_encoder_length=30,
         max_prediction_length=1,
         batch_size=32,
