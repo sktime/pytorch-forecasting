@@ -16,6 +16,7 @@ from typing import Any
 from warnings import warn
 
 from lightning.pytorch import LightningDataModule
+import numpy as np
 from sklearn.preprocessing import RobustScaler
 import torch
 from torch.utils.data import DataLoader, Dataset
@@ -107,6 +108,7 @@ class BaseTimeSeriesDataModule(LightningDataModule):
         self.val_windows = None
         self.test_windows = None
         self.predict_windows = None
+        self.series_times = {}
         self.train_dataset = None
         self.val_dataset = None
         self.test_dataset = None
@@ -233,6 +235,65 @@ class BaseTimeSeriesDataModule(LightningDataModule):
     @abstractmethod
     def _prepare_metadata(self):
         """Prepare metadata for model initialisation."""
+
+    @abstractmethod
+    def inverse_transform_target(
+        self,
+        y: torch.Tensor | list[torch.Tensor],
+        windows: list[tuple[int, int, int, int]],
+    ) -> torch.Tensor | list[torch.Tensor]:
+        """Undo the target normalization of per-window outputs.
+
+        Parameters
+        ----------
+        y : torch.Tensor or list of torch.Tensor
+            Outputs of shape ``(n_windows, prediction_length, ...)``, one entry
+            per target if there are several targets.
+        windows : list of tuple
+            ``(series_idx, start_idx, enc_length, pred_length)`` of each window,
+            aligned with the first axis of ``y``.
+
+        Returns
+        -------
+        torch.Tensor or list of torch.Tensor
+            ``y`` in the space of the original target, same shape as input.
+        """
+
+    def window_index(self, windows: list) -> dict[str, np.ndarray]:
+        """Label each forecast step of ``windows`` with its group and time.
+
+        Parameters
+        ----------
+        windows : list of tuple
+            One entry per window, ``(series_idx, start_idx, enc_length,
+            pred_length)``.
+
+        Returns
+        -------
+        dict of str to np.ndarray
+            ``n_windows * pred_length`` entries per key: the group columns of
+            the data, its time column, and ``<time>_origin``, the last encoder
+            time of the window.
+        """
+        data = self.time_series
+        time = data._time
+        per_series = [self.series_times[s] for s in range(len(data))]
+        times = np.concatenate(per_series)
+        offsets = np.cumsum([0] + [len(t) for t in per_series])
+
+        w = np.asarray(windows, dtype=np.int64).reshape(-1, 4)
+        pred_len = w[0, 3]
+        first = offsets[w[:, 0]] + w[:, 1] + w[:, 2]
+        rows = np.repeat(w[:, 0], pred_len)
+
+        keys = [k if isinstance(k, tuple) else (k,) for k in data._group_ids]
+        index = {
+            col: np.asarray([k[i] for k in keys])[rows]
+            for i, col in enumerate(data._group)
+        }
+        index[time] = times[(first[:, None] + np.arange(pred_len)).reshape(-1)]
+        index[f"{time}_origin"] = np.repeat(times[first - 1], pred_len)
+        return index
 
     @abstractmethod
     def _preprocess_data(self, series_idx) -> dict[str, Any]:
