@@ -19,6 +19,7 @@ from torch.utils.data import DataLoader
 from pytorch_forecasting.callbacks.predict import PredictCallback
 from pytorch_forecasting.metrics import (
     Metric,
+    MultiLoss,
     coerce_to_pytorch_forecasting_metric,
 )
 from pytorch_forecasting.utils._classproperty import classproperty
@@ -163,23 +164,66 @@ class BaseModel(LightningModule):
 
         return predict_callback.result
 
-    def to_prediction(self, out: dict[str, Any], **kwargs) -> torch.Tensor:
-        """Converts raw model output to point forecasts."""
-        # todo: add MultiLoss support
-        try:
-            out = self._loss.to_prediction(out["prediction"], **kwargs)
-        except TypeError:  # in case passed kwargs do not exist
-            out = self._loss.to_prediction(out["prediction"])
-        return out
+    def _coerce_y_for_loss(self, y: Any, metric: nn.Module | None = None) -> Any:
+        """Convert [B,T,K] targets or legacy lists to the metric's input format."""
+        metric = self._loss if metric is None else metric
+        targets, weight = y if isinstance(y, tuple) else (y, None)
+        if isinstance(targets, torch.Tensor) and targets.ndim == 3:
+            targets = list(targets.unbind(dim=2))
+        elif not isinstance(targets, list):
+            targets = [targets]
+        n_targets = len(metric) if isinstance(metric, MultiLoss) else 1
+        if len(targets) != n_targets:
+            raise ValueError(f"Expected {n_targets} targets, got {len(targets)}.")
+        if isinstance(metric, MultiLoss):
+            return targets, weight
+        return (targets[0], weight) if isinstance(y, tuple) else targets[0]
 
-    def to_quantiles(self, out: dict[str, Any], **kwargs) -> torch.Tensor:
-        """Converts raw model output to quantile forecasts."""
-        # todo: add MultiLoss support
+    def _coerce_y_hat_for_loss(
+        self, y_hat: Any, metric: nn.Module | None = None
+    ) -> Any:
+        """Split only the target axis of [B,T,K,O]; retain legacy inputs."""
+        metric = self._loss if metric is None else metric
+        if isinstance(y_hat, torch.Tensor) and y_hat.ndim == 4:
+            predictions = list(y_hat.unbind(dim=2))
+        elif isinstance(y_hat, (list, tuple)):
+            predictions = list(y_hat)
+        else:
+            predictions = [y_hat]
+        n_targets = len(metric) if isinstance(metric, MultiLoss) else 1
+        if len(predictions) != n_targets:
+            raise ValueError(
+                f"Expected {n_targets} target predictions, got {len(predictions)}."
+            )
+        return predictions if isinstance(metric, MultiLoss) else predictions[0]
+
+    def _restore_y_hat_from_metrics(self, result: Any, original: Any) -> Any:
+        """Restore the target axis for 4D sources; preserve legacy return formats."""
+        if isinstance(original, torch.Tensor) and original.ndim == 4:
+            if isinstance(result, (list, tuple)):
+                return torch.stack(result, dim=2)
+            return result.unsqueeze(2)
+        return result
+
+    def to_prediction(self, out: dict[str, Any], **kwargs) -> Any:
+        """Converts raw model output to point forecasts."""
+        prediction = out["prediction"]
+        metric_prediction = self._coerce_y_hat_for_loss(prediction)
         try:
-            out = self._loss.to_quantiles(out["prediction"], **kwargs)
+            result = self._loss.to_prediction(metric_prediction, **kwargs)
         except TypeError:  # in case passed kwargs do not exist
-            out = self._loss.to_quantiles(out["prediction"])
-        return out
+            result = self._loss.to_prediction(metric_prediction)
+        return self._restore_y_hat_from_metrics(result, prediction)
+
+    def to_quantiles(self, out: dict[str, Any], **kwargs) -> Any:
+        """Converts raw model output to quantile forecasts."""
+        prediction = out["prediction"]
+        metric_prediction = self._coerce_y_hat_for_loss(prediction)
+        try:
+            result = self._loss.to_quantiles(metric_prediction, **kwargs)
+        except TypeError:  # in case passed kwargs do not exist
+            result = self._loss.to_quantiles(metric_prediction)
+        return self._restore_y_hat_from_metrics(result, prediction)
 
     def training_step(
         self, batch: tuple[dict[str, torch.Tensor]], batch_idx: int
@@ -202,7 +246,9 @@ class BaseModel(LightningModule):
         x, y = batch
         y_hat_dict = self(x)
         y_hat = y_hat_dict["prediction"]
-        loss = self._loss(y_hat, y)
+        loss = self._loss(
+            self._coerce_y_hat_for_loss(y_hat), self._coerce_y_for_loss(y)
+        )
         self.log(
             "train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True
         )
@@ -230,7 +276,9 @@ class BaseModel(LightningModule):
         x, y = batch
         y_hat_dict = self(x)
         y_hat = y_hat_dict["prediction"]
-        loss = self._loss(y_hat, y)
+        loss = self._loss(
+            self._coerce_y_hat_for_loss(y_hat), self._coerce_y_for_loss(y)
+        )
         self.log(
             "val_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
         )
@@ -258,7 +306,9 @@ class BaseModel(LightningModule):
         x, y = batch
         y_hat_dict = self(x)
         y_hat = y_hat_dict["prediction"]
-        loss = self._loss(y_hat, y)
+        loss = self._loss(
+            self._coerce_y_hat_for_loss(y_hat), self._coerce_y_for_loss(y)
+        )
         self.log(
             "test_loss", loss, on_step=False, on_epoch=True, prog_bar=True, logger=True
         )
@@ -383,7 +433,10 @@ class BaseModel(LightningModule):
             Prefix for the logged metrics (e.g., "train", "val", "test").
         """
         for metric in self.logging_metrics:
-            metric_value = metric(y_hat, y)
+            metric_value = metric(
+                self._coerce_y_hat_for_loss(y_hat, metric),
+                self._coerce_y_for_loss(y, metric),
+            )
             self.log(
                 f"{prefix}_{metric.__class__.__name__}",
                 metric_value,
