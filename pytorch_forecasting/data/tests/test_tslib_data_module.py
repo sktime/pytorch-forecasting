@@ -3,6 +3,7 @@ import pandas as pd
 import pytest
 import torch
 
+from pytorch_forecasting.data import TimeSeriesMetadata, TslibDataModuleMetadata
 from pytorch_forecasting.data.data_module import TslibDataModule
 from pytorch_forecasting.data.timeseries import TimeSeries
 
@@ -68,7 +69,7 @@ def sample_timeseries_data():
 def tslib_data_module(sample_timeseries_data):
     """Fixture for TSLibDataModule."""
     return TslibDataModule(
-        time_series_dataset=sample_timeseries_data,
+        time_series=sample_timeseries_data,
         context_length=8,
         prediction_length=4,
         batch_size=2,  # Smaller batch size for faster testing
@@ -80,19 +81,19 @@ def test_init(sample_timeseries_data):
     """Test the initialization of the data module."""
 
     tslib_dm = TslibDataModule(
-        time_series_dataset=sample_timeseries_data,
+        time_series=sample_timeseries_data,
         context_length=32,
         prediction_length=16,
         batch_size=8,
     )
 
-    assert tslib_dm.time_series_dataset == sample_timeseries_data
+    assert tslib_dm.time_series == sample_timeseries_data
     assert tslib_dm.context_length == 32
     assert tslib_dm.prediction_length == 16
     assert tslib_dm.batch_size == 8
     assert tslib_dm.train_val_test_split == (0.7, 0.15, 0.15)
 
-    assert isinstance(tslib_dm.time_series_metadata, dict)
+    assert isinstance(tslib_dm.time_series_metadata, TimeSeriesMetadata)
     assert "cols" in tslib_dm.time_series_metadata
 
 
@@ -102,7 +103,7 @@ def test_prepare_metadata(tslib_data_module):
 
     metadata = tslib_data_module.metadata
 
-    assert isinstance(metadata, dict)
+    assert isinstance(metadata, TslibDataModuleMetadata)
 
     assert "feature_names" in metadata
     assert "feature_indices" in metadata
@@ -144,16 +145,16 @@ def test_setup(tslib_data_module):
     tslib_data_module.setup(stage="fit")
     assert hasattr(tslib_data_module, "train_dataset")
     assert hasattr(tslib_data_module, "val_dataset")
-    assert len(tslib_data_module._train_windows) > 0
-    assert len(tslib_data_module._val_windows) > 0
+    assert len(tslib_data_module.train_windows) > 0
+    assert len(tslib_data_module.val_windows) > 0
 
     tslib_data_module.setup(stage="test")
     assert hasattr(tslib_data_module, "test_dataset")
-    assert len(tslib_data_module._test_windows) > 0
+    assert len(tslib_data_module.test_windows) > 0
 
     tslib_data_module.setup(stage="predict")
     assert hasattr(tslib_data_module, "predict_dataset")
-    assert len(tslib_data_module._predict_windows) > 0
+    assert len(tslib_data_module.predict_windows) > 0
 
 
 def test_train_dataloader(tslib_data_module):
@@ -337,12 +338,12 @@ def test_create_windows(tslib_data_module):
         ), "prediction_length should match the datamodule's prediction_length."
 
         assert (
-            0 <= series_idx < len(tslib_data_module.time_series_dataset)
+            0 <= series_idx < len(tslib_data_module.time_series)
         ), "series_idx should be within the range of the dataset length."
 
         min_required_length = context_length + prediction_length
 
-        time_series_dataset = tslib_data_module.time_series_dataset
+        time_series_dataset = tslib_data_module.time_series
         # print(type(time_series_dataset[series_idx]))
         sample = time_series_dataset[series_idx]
 
@@ -356,7 +357,7 @@ def test_create_windows(tslib_data_module):
             start_idx + min_required_length <= series_length
         ), "Window extended beyond series length."
 
-    all_indices = torch.arange(len(tslib_data_module.time_series_dataset))
+    all_indices = torch.arange(len(tslib_data_module.time_series))
     all_windows = tslib_data_module._create_windows(all_indices)
     assert len(all_windows) >= len(
         train_windows
@@ -414,7 +415,7 @@ def test_different_split_ratios(sample_timeseries_data):
 
     custom_split = (0.6, 0.2, 0.2)
     dm_custom = TslibDataModule(
-        time_series_dataset=sample_timeseries_data,
+        time_series=sample_timeseries_data,
         context_length=8,
         prediction_length=4,
         batch_size=2,
@@ -517,7 +518,7 @@ def test_multivariate_target():
     )
 
     dm = TslibDataModule(
-        time_series_dataset=ts,
+        time_series=ts,
         context_length=8,
         prediction_length=4,
         batch_size=2,
@@ -525,8 +526,20 @@ def test_multivariate_target():
 
     dm.setup(stage="fit")
 
+    # with more than one target, y is a list with one (prediction_length,)
+    # tensor per target, as documented in _TslibDataset.__getitem__
     x, y = dm.train_dataset[0]
 
-    assert (
-        y.shape[-1] == 2
-    ), "Target should have two dimensions for n_features for multivariate target."
+    assert isinstance(y, list)
+    assert len(y) == 2
+    for i, target in enumerate(y):
+        assert target.shape == (4,)
+        assert torch.equal(target, x["future_target"][:, i])
+
+    # collate_fn stacks each target across the batch
+    _, y_batch = next(iter(dm.train_dataloader()))
+
+    assert isinstance(y_batch, list)
+    assert len(y_batch) == 2
+    for target in y_batch:
+        assert target.shape == (2, 4)
