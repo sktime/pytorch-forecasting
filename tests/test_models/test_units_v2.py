@@ -79,7 +79,7 @@ def basic_timeseries_dataset(sample_multivariate_data):
 def basic_data_module(basic_timeseries_dataset):
     """EncoderDecoderTimeSeriesDataModule, not yet set up."""
     return EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=basic_timeseries_dataset,
+        time_series=basic_timeseries_dataset,
         batch_size=BATCH_SIZE,
         max_encoder_length=MAX_ENCODER_LENGTH,
         max_prediction_length=MAX_PREDICTION_LENGTH,
