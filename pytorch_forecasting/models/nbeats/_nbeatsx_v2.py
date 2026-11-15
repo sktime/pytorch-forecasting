@@ -161,7 +161,7 @@ class NBeatsX_v2(BaseModel):
             prog_bar=True,
             batch_size=target.size(0),
         )
-        self.log_metrics(out["prediction"], y, prefix=stage)
+        self.log_metrics(out["prediction"], y, prefix=stage, encoder_target=target)
         return loss
 
     def training_step(self, batch, batch_idx):

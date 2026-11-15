@@ -18,6 +18,7 @@ from torch.utils.data import DataLoader
 
 from pytorch_forecasting.callbacks.predict import PredictCallback
 from pytorch_forecasting.metrics import (
+    MASE,
     Metric,
     coerce_to_pytorch_forecasting_metric,
 )
@@ -368,7 +369,11 @@ class BaseModel(LightningModule):
             raise ValueError(f"Scheduler {self.lr_scheduler} not supported.")
 
     def log_metrics(
-        self, y_hat: torch.Tensor, y: torch.Tensor, prefix: str = "val"
+        self,
+        y_hat: torch.Tensor,
+        y: torch.Tensor,
+        prefix: str = "val",
+        encoder_target: torch.Tensor | None = None,
     ) -> None:
         """
         Log additional metrics during training, validation, or testing.
@@ -381,9 +386,14 @@ class BaseModel(LightningModule):
             Target output tensor.
         prefix : str
             Prefix for the logged metrics (e.g., "train", "val", "test").
+        encoder_target : torch.Tensor, optional
+            Historical targets used to scale MASE.
         """
         for metric in self.logging_metrics:
-            metric_value = metric(y_hat, y)
+            if isinstance(metric, MASE) and encoder_target is not None:
+                metric_value = metric(y_hat, y, encoder_target=encoder_target)
+            else:
+                metric_value = metric(y_hat, y)
             self.log(
                 f"{prefix}_{metric.__class__.__name__}",
                 metric_value,

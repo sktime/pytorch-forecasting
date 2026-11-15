@@ -852,6 +852,7 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
             series_idx = idx.item()
             sample = self.time_series[series_idx]
             sequence_length = len(sample["y"])
+            observed = sample["t"] <= sample["cutoff_time"]
 
             if sequence_length < self.max_encoder_length + self.max_prediction_length:
                 continue
@@ -873,6 +874,7 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
                 if (
                     start_idx + self.max_encoder_length + self.max_prediction_length
                     <= sequence_length
+                    and observed[start_idx : start_idx + self.max_encoder_length].all()
                 ):
                     windows.append(
                         (
