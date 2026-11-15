@@ -30,6 +30,44 @@ def _check_type(value, expected, name, allow_none=False, hint=""):
     )
 
 
+def _check_choice(value, allowed, name):
+    """Raise ``ValueError`` unless ``value`` is one of ``allowed``.
+
+    Parameters
+    ----------
+    value : object
+        The value to check.
+    allowed : iterable
+        The valid options.
+    name : str
+        Parameter name, quoted in the message.
+    """
+    allowed = list(allowed)
+    if value not in allowed:
+        raise ValueError(f"`{name}` must be one of {allowed!r}, got {value!r}.")
+
+
+def _check_choices(values, allowed, name):
+    """Raise ``ValueError`` unless every entry of ``values`` is in ``allowed``.
+
+    Parameters
+    ----------
+    values : iterable
+        The values to check.
+    allowed : iterable
+        The valid options.
+    name : str
+        Parameter name, quoted in the message.
+    """
+    allowed = list(allowed)
+    unknown = [value for value in values if value not in allowed]
+    if unknown:
+        raise ValueError(
+            f"`{name}` contains unknown value(s) {unknown!r}. "
+            f"Valid options: {allowed!r}."
+        )
+
+
 def _check_positive(value, name, allow_none=False):
     """Raise ``ValueError`` unless ``value`` is at least 1.
 
