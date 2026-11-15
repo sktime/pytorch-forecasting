@@ -129,10 +129,9 @@ Usage
 Details and available models
 -------------------------------
 
-See the API documentation for the M Layer and the Forecaster layer, and the list of the models:
+See the :doc:`v2 API reference <api_v2>` for the Forecaster API and the list of models, and the M Layer page for the underlying model implementations:
 
 .. toctree::
     :maxdepth: 2
 
     M Layer <m_layer_v2>
-    API reference <api_v2>
