@@ -2,6 +2,10 @@
 
 _PyTorch Forecasting_ is a PyTorch-based package for forecasting with state-of-the-art deep learning architectures. It provides a high-level API and uses [PyTorch Lightning](https://pytorch-lightning.readthedocs.io/) to scale training on GPU or CPU, with automatic logging.
 
+> **⚠️ API v2 (beta) is in development — unstable and not production-ready.**
+> We are actively working on a redesigned v2 API while the v1 API described in this README remains stable and fully supported. v2 decouples forecasting models from data structures and introduces a unified, `scikit-learn`-style `fit()`/`predict()` "Package" workflow built on a layered architecture (Dataset → DataModule → Model → Package), cutting down on boilerplate.
+> Learn more in the [v2 API reference](https://pytorch-forecasting.readthedocs.io/en/latest/api_v2.html) and follow the [v2 roadmap](https://github.com/sktime/pytorch-forecasting/issues/1993).
+
 
 |  | **[Documentation](https://pytorch-forecasting.readthedocs.io)** · **[Tutorials](https://pytorch-forecasting.readthedocs.io/en/latest/tutorials.html)** · **[Release Notes](https://pytorch-forecasting.readthedocs.io/en/latest/CHANGELOG.html)** |
 |---|---|
