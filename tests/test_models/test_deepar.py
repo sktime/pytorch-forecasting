@@ -20,6 +20,16 @@ from pytorch_forecasting.metrics import (
 from pytorch_forecasting.models import DeepAR
 
 
+def test_base_test_params_preserve_cell_types():
+    """Keep both recurrent cells available to the generic estimator tests."""
+    params = DeepAR.pkg.get_base_test_params()
+
+    assert {param["cell_type"] for param in params} == {"LSTM", "GRU"}
+    for param in params:
+        assert param["hidden_size"] == 5
+        assert param["n_plotting_samples"] == 100
+
+
 def _integration(
     data_with_covariates,
     tmp_path,
