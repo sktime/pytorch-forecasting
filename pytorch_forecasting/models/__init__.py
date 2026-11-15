@@ -13,7 +13,12 @@ from pytorch_forecasting.models.deepar import DeepAR
 from pytorch_forecasting.models.frets import FreTS, FreTSForecaster
 from pytorch_forecasting.models.mlp import DecoderMLP
 from pytorch_forecasting.models.modern_tcn import ModernTCN
-from pytorch_forecasting.models.nbeats import NBeats, NBeatsKAN, NBeatsX
+from pytorch_forecasting.models.nbeats import (
+    NBeats,
+    NBeatsKAN,
+    NBeatsX,
+    NBeatsXForecaster,
+)
 from pytorch_forecasting.models.nhits import NHiTS
 from pytorch_forecasting.models.nn import GRU, LSTM, MultiEmbedding, get_rnn
 from pytorch_forecasting.models.patch_tst import (
@@ -37,6 +42,7 @@ __all__ = [
     "NBeats",
     "NBeatsKAN",
     "NBeatsX",
+    "NBeatsXForecaster",
     "NHiTS",
     "PatchTST",
     "PatchTST_v2",

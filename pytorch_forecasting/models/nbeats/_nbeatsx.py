@@ -1,11 +1,13 @@
 """N-BEATS with static, historical, and known future covariates."""
 
 import torch
-from torch import nn
 
 from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import NaNLabelEncoder
-from pytorch_forecasting.layers._nbeats._nbeatsx import NBEATSxBlock
+from pytorch_forecasting.layers._nbeats._nbeatsx import (
+    make_nbeatsx_blocks,
+    run_nbeatsx_blocks,
+)
 from pytorch_forecasting.metrics import (
     MASE,
     CrossEntropy,
@@ -131,17 +133,8 @@ class NBeatsX(BaseModelWithCovariates):
     ):
         if stack_types is None:
             stack_types = ["generic"]
-        if not stack_types or any(
-            name not in {"generic", "trend", "seasonality", "exogenous"}
-            for name in stack_types
-        ):
-            raise ValueError("stack_types must contain valid NBEATSx stack types")
         if context_length < 1 or prediction_length < 1:
             raise ValueError("context_length and prediction_length must be positive")
-        if not 0 <= dropout < 1:
-            raise ValueError("dropout must be in [0, 1)")
-        if not 0 <= backcast_loss_ratio < float("inf"):
-            raise ValueError("backcast_loss_ratio must be finite and nonnegative")
 
         static_reals = static_reals or []
         if time_varying_reals_encoder is None:
@@ -171,26 +164,6 @@ class NBeatsX(BaseModelWithCovariates):
             self.hparams[name] = self.hparams[name] or []
         self.hparams.embedding_labels = self.hparams.embedding_labels or {}
         super().__init__(loss=loss, **kwargs)
-        for name, default in (
-            ("num_blocks", 3),
-            ("num_block_layers", 4),
-            ("widths", 256),
-            ("sharing", False),
-            ("expansion_coefficient_lengths", 3),
-        ):
-            values = self.hparams[name]
-            if values is None:
-                values = [default]
-            if len(values) == 1:
-                values = values * len(stack_types)
-            if len(values) != len(stack_types):
-                raise ValueError(f"{name} must have length 1 or len(stack_types)")
-            if name != "sharing" and any(
-                not isinstance(value, int) or value < 1 for value in values
-            ):
-                raise ValueError(f"{name} must contain positive integers")
-            self.hparams[name] = values
-
         self.embeddings = MultiEmbedding(
             embedding_sizes=embedding_sizes,
             embedding_paddings=embedding_paddings,
@@ -218,26 +191,9 @@ class NBeatsX(BaseModelWithCovariates):
                 "encoder and decoder"
             )
 
-        self.net_blocks = nn.ModuleList()
-        for i, stack_type in enumerate(stack_types):
-            for block_id in range(self.hparams.num_blocks[i]):
-                if block_id > 0 and self.hparams.sharing[i]:
-                    block = self.net_blocks[-1]
-                else:
-                    block = NBEATSxBlock(
-                        stack_type=stack_type,
-                        input_size=input_size,
-                        context_length=context_length,
-                        prediction_length=prediction_length,
-                        units=self.hparams.widths[i],
-                        num_layers=self.hparams.num_block_layers[i],
-                        expansion_coefficient_length=(
-                            self.hparams.expansion_coefficient_lengths[i]
-                        ),
-                        exogenous_size=exogenous_size,
-                        dropout=dropout,
-                    )
-                self.net_blocks.append(block)
+        self.net_blocks = make_nbeatsx_blocks(
+            self.hparams, input_size, context_length, prediction_length, exogenous_size
+        )
 
     def _covariates(self, x, names, period):
         """Select and embed only the features available in this period."""
@@ -272,28 +228,22 @@ class NBeatsX(BaseModelWithCovariates):
         encoder = self._covariates(x, self.encoder_covariates, "encoder")
         decoder = self._covariates(x, self.decoder_variables, "decoder")
         static = self._covariates(x, self.static_variables, "encoder")[:, 0]
-        covariates = torch.cat([encoder.flatten(1), decoder.flatten(1), static], dim=-1)
         encoder_basis = None
         if "exogenous" in self.hparams.stack_types:
             encoder_basis = self._covariates(x, self.decoder_variables, "encoder")
 
-        residual = target
-        backcasts, forecasts = [], []
-        for block in self.net_blocks:
-            backcast, forecast = block(residual, covariates, encoder_basis, decoder)
-            residual = residual - backcast
-            backcasts.append(backcast)
-            forecasts.append(forecast)
-        block_forecasts = torch.stack(forecasts, dim=-1)
+        backcast, block_backcasts, block_forecasts = run_nbeatsx_blocks(
+            self.net_blocks, target, encoder, decoder, static, encoder_basis
+        )
         return self.to_network_output(
             prediction=self.transform_output(
                 block_forecasts.sum(-1).unsqueeze(-1), target_scale=x["target_scale"]
             ),
             backcast=self.transform_output(
-                (target - residual).unsqueeze(-1), target_scale=x["target_scale"]
+                backcast.unsqueeze(-1), target_scale=x["target_scale"]
             ),
             block_forecasts=block_forecasts.detach(),
-            block_backcasts=torch.stack(backcasts, dim=-1),
+            block_backcasts=block_backcasts,
         )
 
     def step(self, x, y, batch_idx, **kwargs):

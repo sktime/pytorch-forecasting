@@ -17,13 +17,17 @@ from pytorch_forecasting.models.nbeats._nbeats_pkg import NBeats_pkg
 from pytorch_forecasting.models.nbeats._nbeatskan import NBeatsKAN
 from pytorch_forecasting.models.nbeats._nbeatskan_pkg import NBeatsKAN_pkg
 from pytorch_forecasting.models.nbeats._nbeatsx import NBeatsX
+from pytorch_forecasting.models.nbeats._nbeatsx_forecaster_v2 import NBeatsXForecaster
 from pytorch_forecasting.models.nbeats._nbeatsx_pkg import NBeatsX_pkg
+from pytorch_forecasting.models.nbeats._nbeatsx_v2 import NBeatsX_v2
 
 __all__ = [
     "NBeats",
     "NBeatsKAN",
     "NBeatsX",
+    "NBeatsXForecaster",
     "NBeatsX_pkg",
+    "NBeatsX_v2",
     "NBeats_pkg",
     "NBeatsKAN_pkg",
     "NBEATSGenericBlock",
