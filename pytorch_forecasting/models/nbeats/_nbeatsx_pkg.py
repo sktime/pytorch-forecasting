@@ -1,11 +1,12 @@
 """NBeatsX package container."""
 
+from importlib import import_module
+
 import torch
 
 from pytorch_forecasting.data import GroupNormalizer
 from pytorch_forecasting.metrics import PoissonLoss, TweedieLoss
 from pytorch_forecasting.models.base._base_object import _BasePtForecaster
-from pytorch_forecasting.models.nbeats import _nbeatsx
 from pytorch_forecasting.tests._data_scenarios import (
     data_with_covariates,
     make_dataloaders,
@@ -31,7 +32,8 @@ class NBeatsX_pkg(_BasePtForecaster):
     @classmethod
     def get_cls(cls):
         """Get the model class."""
-        return _nbeatsx.NBeatsX
+        # Load after package initialization to avoid a model/package import cycle.
+        return import_module("pytorch_forecasting.models.nbeats._nbeatsx").NBeatsX
 
     @classmethod
     def get_base_test_params(cls):

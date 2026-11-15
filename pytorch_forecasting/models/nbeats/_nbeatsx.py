@@ -14,7 +14,7 @@ from pytorch_forecasting.metrics import (
     QuantileLoss,
 )
 from pytorch_forecasting.models.base_model import BaseModelWithCovariates
-from pytorch_forecasting.models.nbeats import _nbeatsx_pkg
+from pytorch_forecasting.models.nbeats._nbeatsx_pkg import NBeatsX_pkg
 from pytorch_forecasting.models.nn import MultiEmbedding
 
 
@@ -99,7 +99,7 @@ class NBeatsX(BaseModelWithCovariates):
     @classmethod
     def _pkg(cls):
         """Return the model's package metadata."""
-        return _nbeatsx_pkg.NBeatsX_pkg
+        return NBeatsX_pkg
 
     def __init__(
         self,
@@ -143,10 +143,7 @@ class NBeatsX(BaseModelWithCovariates):
         if not 0 <= backcast_loss_ratio < float("inf"):
             raise ValueError("backcast_loss_ratio must be finite and nonnegative")
 
-        static_categoricals = static_categoricals or []
         static_reals = static_reals or []
-        time_varying_categoricals_encoder = time_varying_categoricals_encoder or []
-        time_varying_categoricals_decoder = time_varying_categoricals_decoder or []
         if time_varying_reals_encoder is None:
             time_varying_reals_encoder = [target]
         time_varying_reals_decoder = time_varying_reals_decoder or []
@@ -154,7 +151,6 @@ class NBeatsX(BaseModelWithCovariates):
             x_reals = [target]
         x_categoricals = x_categoricals or []
         embedding_sizes = embedding_sizes or {}
-        embedding_labels = embedding_labels or {}
         embedding_paddings = embedding_paddings or []
         categorical_groups = categorical_groups or {}
         if target not in x_reals or target not in time_varying_reals_encoder:
@@ -167,6 +163,13 @@ class NBeatsX(BaseModelWithCovariates):
             raise ValueError("NBeatsX supports single-target point losses only")
 
         self.save_hyperparameters(ignore=["loss"])
+        for name in (
+            "static_categoricals",
+            "time_varying_categoricals_encoder",
+            "time_varying_categoricals_decoder",
+        ):
+            self.hparams[name] = self.hparams[name] or []
+        self.hparams.embedding_labels = self.hparams.embedding_labels or {}
         super().__init__(loss=loss, **kwargs)
         for name, default in (
             ("num_blocks", 3),

@@ -273,6 +273,14 @@ def test_package_registration():
     assert NBeatsX_pkg.get_class_tag("capability:exogenous")
 
 
+def test_default_covariate_metadata():
+    model = NBeatsX(widths=[8], num_blocks=[1], num_block_layers=[1])
+    assert model.static_variables == []
+    assert model.encoder_variables == ["target"]
+    assert model.decoder_variables == []
+    assert model.hparams.embedding_labels == {}
+
+
 @pytest.mark.parametrize(
     "stack_types", [["generic"], ["trend", "seasonality", "exogenous"]]
 )
