@@ -2,46 +2,66 @@ Data v2
 =======
 
 .. warning::
-    Please note that the v2 modules are currently in active-development and is in beta right now, so please use this API with caution.
-    See complete documentation for v2 API :doc:`here <api_v2>` and stable v1 documentation :doc:`here <api>`.
+    Please note that the v2 modules are currently in active development and are in beta. Please use this API with caution.
+    See the complete v2 API documentation :doc:`here <api_v2>` and the stable v1 documentation :doc:`here <api>`.
 
 .. currentmodule:: pytorch_forecasting
 
-Loading and managing time series data for deep learning can be complex, especially when handling varying sequence lengths, multiple covariates, and categorical encodings.
+API v2 separates the representation of time series data from the preprocessing and data-loading workflow. The data pipeline consists of two main components:
 
-In API-v2, the data pipeline follows a strict two-layer architecture: the **D1 Layer (Dataset)** and the **D2 Layer (DataModule)** to maintain "separation of responsibilities".
+- **TimeSeries:** A data container that holds tabular time series data together with its schema and metadata.
+- **DataModule:** Handles preprocessing, batching, dataloader creation, and the collection of model initialization metadata.
 
-- **D1 Layer (Dataset)** ingests the raw data and turn it into ``torch`` tensors
-- **D2 Layer (DataModule)** performs the pre-processing and the data loading
+TimeSeries: Data Container
+--------------------------
 
+The :py:class:`~data.timeseries._timeseries_v2.TimeSeries` class is the standard input and output data structure in API v2. It stores time series data together with information describing its structure, including time, target, group, and variable roles.
 
-D1 Layer: Dataset
------------------
+It can be initialized from tabular data such as a pandas DataFrame. An optional future-data DataFrame can also be provided for variables known beyond the historical observation period.
 
-The D1 Layer is the foundational data ingestion layer. Its primary responsibilities are to accept raw tabular data (e.g., pandas DataFrames), convert the raw data into PyTorch tensors, and extract base-level metadata such as static variables and basic time series properties.
+Unlike a conventional preprocessing layer, ``TimeSeries`` primarily acts as a data container. It does not perform the full preprocessing and batching workflow handled by the DataModule.
 
-Unlike the v1 dataset, the D1 layer does not handle complex preprocessing or batching logic, keeping it lightweight and highly modular.
+The same data structure is used for forecast output. A prediction result represented as a ``TimeSeries`` can be converted into a pandas DataFrame using ``to_pandas()``:
+
+.. code-block:: python
+
+    predictions_df = predictions.to_pandas()
 
 .. autoclass:: pytorch_forecasting.data.timeseries._timeseries_v2.TimeSeries
    :noindex:
    :members: __init__
 
 
-D2 Layer: DataModule
---------------------
+DataModule Layer
+----------------
 
-The D2 Layer sits on top of D1 and is implemented as a PyTorch Lightning ``LightningDataModule``. This layer is responsible for the heavier lifting:
+The DataModule layer sits on top of ``TimeSeries`` and is implemented using PyTorch Lightning's ``LightningDataModule``. It is responsible for preparing data for model training and prediction.
+
+Its main responsibilities include:
 
 * **Preprocessing:** Applying normalizers and encoders to the data.
 * **Batching:** Creating and managing the ``train_dataloader``, ``val_dataloader``, and ``test_dataloader``.
-* **Model Initialization Metadata:** Dynamically collecting necessary architectural information (such as the number of categorical variables, embedding sizes, and vocabulary states) required to properly instantiate the Forecasting models in the Model Layer.
+* **Model Initialization Metadata:** Collecting structural information, such as categorical variable counts, embedding sizes, and vocabulary states, required to initialize forecasting models.
 
+**Reusing a DataModule Configuration**
+
+The ``with_data()`` method makes it possible to attach a different ``TimeSeries`` object while retaining the existing DataModule configuration.
+
+It returns a new DataModule instance of the same class with the same configuration. The original DataModule is not modified.
+
+For example:
+
+.. code-block:: python
+
+    new_datamodule = datamodule.with_data(new_time_series)
+
+This is useful when applying an already configured data pipeline to another dataset without rebuilding the configuration.
 
 **Model Compatibility**
 
-Because different forecasting architectures require specific input shapes and structures (e.g., standard sequential batches vs. complex encoder-decoder structures), there are several different types of DataModules available in API-v2.
+Different forecasting architectures require specific input shapes and structures, such as standard sequential batches or encoder-decoder batches. API v2 therefore provides different DataModule implementations.
 
-Each model is optimally designed to be compatible with one or more specific DataModules. You can easily verify which DataModule pairs correctly with your chosen model by checking the compatibility overview table in the **:doc:`v2 Models <models_v2>`** documentation.
+Each model is designed to work with one or more compatible DataModules. You can check the compatibility overview table in the **:doc:`v2 Models <models_v2>`** documentation to identify the appropriate DataModule for a model.
 
 .. autoclass:: pytorch_forecasting.data.data_module._tslib_data_module.TslibDataModule
    :noindex:
@@ -51,7 +71,7 @@ Each model is optimally designed to be compatible with one or more specific Data
 API Reference
 -------------
 
-See the detailed API documentation for the V2 data classes below:
+See the detailed API documentation for the v2 data classes below:
 
 .. currentmodule:: pytorch_forecasting
 

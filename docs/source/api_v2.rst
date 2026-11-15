@@ -2,8 +2,8 @@ API v2
 ======
 
 .. warning::
-    Please note that the v2 modules are currently in active-development and is in beta right now, so please use this API with caution.
-    See v1 documentation :doc:`here <api>` - it is stable and can be used in the production pipelines.
+    Please note that the v2 modules are currently in active development and are in beta. Please use this API with caution.
+    See the stable v1 documentation :doc:`here <api>` for production use.
 
 .. currentmodule:: pytorch_forecasting
 
@@ -11,30 +11,41 @@ We are currently developing version 2 of PyTorch Forecasting. The primary object
 
 The key structural changes and design philosophies driving V2 include:
 
-* **Decoupling Models and Data Structures:** In the original API, models are heavily tightly coupled with the :py:class:`~data.timeseries.TimeSeriesDataSet` class. V2 systematically reduces this strict dependency. By decoupling the forecasting models from specific data-handling classes, the models become more modular and can interface more seamlessly with standard PyTorch tensors, data loaders, and external data pipelines.
-* **Unified API with Exchangeable Models:** V2 introduces a high-level Package wrapper providing a standardized ``fit()`` and ``predict()`` workflow, making it effortless to swap between different forecasting architectures. Crucially, this does not replace the PyTorch Lightning interface—advanced users retain full access to interact with the underlying models directly at a lower level.
-* **Simplified User Journey:** Consequently, these architectural changes drastically reduce the amount of boilerplate code required to set up data, initialize models, and generate predictions, allowing users to move from raw data to forecasting more efficiently.
+* **Decoupling Models and Data Structures:** In the original API, models are tightly coupled with the :py:class:`~data.timeseries.TimeSeriesDataSet` class. V2 reduces this dependency, allowing forecasting models to work with a more flexible data interface and standard PyTorch components.
+* **Unified Forecaster API:** V2 introduces a high-level Forecaster interface that provides standardized ``fit()`` and ``predict()`` workflows across forecasting architectures. Advanced users can still interact directly with the underlying PyTorch Lightning models.
+* **Simplified User Journey:** These architectural changes reduce the boilerplate required to configure data, initialize models, train forecasting models, and generate predictions.
 
 The New Layered Architecture
 ----------------------------
 
-To achieve this decoupling and streamline the user journey, API-v2 introduces a strict, four-layered structure for the entire model training and prediction workflow:
+API v2 organizes the forecasting workflow into four main components:
 
-* **D1 Layer (Dataset Layer):** A foundational dataset layer responsible for ingesting raw data and converting it into PyTorch tensors. It also extracts and stores fundamental metadata, such as static variables.
-* **D2 Layer (DataModule Layer):** Implemented as a PyTorch Lightning ``LightningDataModule``, this layer handles all data preprocessing, instantiates the dataloaders, and collects the necessary structural information (e.g., the number of categorical variables) required to properly initialize the forecasting models.
-* **Model Layer:** Implemented as a PyTorch Lightning ``LightningModule``, this layer contains the pure PyTorch implementation of the core forecasting algorithms. It remains entirely agnostic to the complexities of the data ingestion pipelines.
-* **Package Layer:** Acting as a higher-level wrapper around the underlying layers, this component manages the orchestration of the workflow. It handles the simultaneous initialization of the layers, exposes the unified ``fit`` and ``predict`` interfaces, and houses the fixtures utilized for testing.
+* **TimeSeries (Data Container):** The :py:class:`~data.timeseries._timeseries_v2.TimeSeries` class is the standard input and output data structure in V2. It holds tabular time series data together with its schema and metadata. It is a data container rather than a conventional data ingestion or preprocessing layer.
+* **DataModule Layer:** Implemented using PyTorch Lightning's ``LightningDataModule``, this layer handles data preprocessing, creates dataloaders, and collects the metadata required to initialize forecasting models. The ``with_data()`` method allows users to create a new DataModule instance with different data while retaining the original configuration.
+* **Model Layer:** Implemented as a PyTorch Lightning ``LightningModule``, this layer contains the core forecasting algorithms and their training logic.
+* **Forecaster Layer:** This high-level layer coordinates the DataModule and Model layers and exposes a unified ``fit()`` and ``predict()`` interface. It simplifies the workflow while allowing access to the underlying model when needed.
+
+Predictions in V2
+-----------------
+
+In the standard prediction workflow, the Forecaster returns predictions as a :py:class:`~data.timeseries._timeseries_v2.TimeSeries` object. This provides a consistent data structure for both input time series and forecast output.
+
+Predictions can be converted to a pandas DataFrame using the ``to_pandas()`` method:
+
+.. code-block:: python
+
+    predictions = forecaster.predict()
+    predictions_df = predictions.to_pandas()
 
 Metrics in V2
 -------------
 
-Currently, API-v2 leverages the exact same metrics suite established in API-v1 to ensure predictive consistency and reliability during the transition. However, to further align with the broader PyTorch ecosystem, we plan to introduce native support for standard ``torch.nn`` metrics and loss functions in future releases.
-
+Currently, API v2 uses the same metrics suite as API v1 to maintain consistency during the transition. Native support for standard ``torch.nn`` metrics and loss functions may be introduced in future releases.
 
 We Need Your Feedback
 ---------------------
 
-The API-v2 is being built for the community, and your input is critical to ensuring it meets your needs. We encourage you to try out the new modules, test them, and let us know what changes, features, or refinements you would like to see before the final release.
+API v2 is being developed for the community, and your feedback is important. We encourage you to try the new modules, test them, and share suggestions for improvements before the final release.
 
 Join the discussion and track our progress on GitHub:
 
