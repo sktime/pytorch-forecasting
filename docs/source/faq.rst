@@ -78,6 +78,12 @@ Training models
   the learning rate finder. To tune hyperparameters, the `optuna package <https://optuna.org/>`_
   is a great place to start with.
 
+* **Why does resuming training from a checkpoint with ckpt_path fail with an UnpicklingError?**
+
+  From ``lightning`` 2.6, pass ``weights_only=False`` together with ``ckpt_path`` for
+  checkpoints that you trust. See
+  :ref:`resuming from a checkpoint <models_resume_checkpoint>`.
+
 
 Interpreting models
 -------------------
