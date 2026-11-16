@@ -9,7 +9,9 @@ from pytorch_forecasting.data import (
     GroupNormalizer,
     MultiNormalizer,
     NaNLabelEncoder,
+    TimeSeries,
     TimeSeriesDataSet,
+    TimeSeriesMetadata,
 )
 from pytorch_forecasting.metrics import (
     MAE,
@@ -66,7 +68,9 @@ from pytorch_forecasting.utils import (
 from pytorch_forecasting.utils._maint._show_versions import show_versions
 
 __all__ = [
+    "TimeSeries",
     "TimeSeriesDataSet",
+    "TimeSeriesMetadata",
     "GroupNormalizer",
     "EncoderNormalizer",
     "NaNLabelEncoder",
