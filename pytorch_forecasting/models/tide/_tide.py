@@ -113,8 +113,9 @@ class TiDEModel(BaseModelWithCovariates):
         with reduced computational requirements by utilizing MLP-based encoder-decoder
         architectures without attention mechanisms.
 
-        This model supports future covariates (known for output_chunk_length points
-        after the prediction time) andstatic covariates.
+        This model supports past covariates (known only up to the prediction time),
+        future covariates (known for output_chunk_length points after the prediction
+        time) and static covariates.
 
         The encoder and decoder are constructed using residual blocks. The number of
         residual blocks in the encoder and decoder can be specified with
@@ -217,7 +218,8 @@ class TiDEModel(BaseModelWithCovariates):
 
         self.model = _TideModule(
             output_dim=self.output_dim,
-            future_cov_dim=self.encoder_covariate_size,
+            future_cov_dim=self.decoder_covariate_size,
+            past_cov_dim=self.past_covariate_size,
             static_cov_dim=self.static_size,
             output_chunk_length=output_chunk_length,
             input_chunk_length=input_chunk_length,
@@ -258,6 +260,24 @@ class TiDEModel(BaseModelWithCovariates):
         ) + sum(
             self.embeddings.output_size[name]
             for name in self.hparams.time_varying_categoricals_encoder
+        )
+
+    @property
+    def past_covariate_size(self) -> int:
+        """Past covariate size.
+
+        Returns:
+            int: size of time-dependent covariates used by the encoder only,
+            i.e. known in the past but not in the future
+        """
+        return len(
+            set(self.hparams.time_varying_reals_encoder)
+            - set(self.hparams.time_varying_reals_decoder)
+            - set(self.target_names)
+        ) + sum(
+            self.embeddings.output_size[name]
+            for name in self.hparams.time_varying_categoricals_encoder
+            if name not in self.hparams.time_varying_categoricals_decoder
         )
 
     @property
@@ -336,22 +356,19 @@ class TiDEModel(BaseModelWithCovariates):
         # covariates
         encoder_features = self.extract_features(x, self.embeddings, period="encoder")
 
-        if self.encoder_covariate_size > 0:
-            # encoder_features = self.extract_features(
-            #                   x, self.embeddings, period="encoder")
-            encoder_x_t = torch.concat(
-                [
-                    encoder_features[name]
-                    for name in self.encoder_variables
-                    if name not in self.target_names
-                ],
-                dim=2,
-            )
-            input_vector = torch.concat((encoder_y, encoder_x_t), dim=2)
-
-        else:
-            encoder_x_t = None
-            input_vector = encoder_y
+        # the TiDE module reads the target first, then the covariates known only
+        # in the past, then the history of the covariates known in the future
+        past_variables = [
+            name
+            for name in self.encoder_variables
+            if name not in self.decoder_variables and name not in self.target_names
+        ]
+        input_vector = torch.concat(
+            [encoder_y]
+            + [encoder_features[name] for name in past_variables]
+            + [encoder_features[name] for name in self.decoder_variables],
+            dim=2,
+        )
 
         if self.decoder_covariate_size > 0:
             decoder_features = self.extract_features(

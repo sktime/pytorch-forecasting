@@ -70,6 +70,7 @@ class _TideModule(nn.Module):
         use_layer_norm: bool,
         dropout: float,
         temporal_hidden_size_future: int,
+        past_cov_dim: int = 0,
     ):
         """PyTorch module implementing the TiDE architecture.
 
@@ -82,6 +83,10 @@ class _TideModule(nn.Module):
             The number of output features in the target.
         future_cov_dim
             The number of covariates available for the future time steps.
+        past_cov_dim
+            The number of covariates available only for the past time steps.
+            Like the target's lookback, they enter the encoder flattened over the
+            input chunk.
         static_cov_dim
             The number of covariates that remain constant across time steps.
         num_encoder_layers
@@ -121,6 +126,7 @@ class _TideModule(nn.Module):
 
         self.output_dim = output_dim
         self.future_cov_dim = future_cov_dim
+        self.past_cov_dim = past_cov_dim
         self.static_cov_dim = static_cov_dim
         self.output_chunk_length = output_chunk_length
         self.input_chunk_length = input_chunk_length
@@ -158,7 +164,7 @@ class _TideModule(nn.Module):
             historical_future_covariates_flat_dim = 0
 
         encoder_dim = (
-            self.input_chunk_length * output_dim
+            self.input_chunk_length * (output_dim + past_cov_dim)
             + historical_future_covariates_flat_dim
             + static_cov_dim
         )
@@ -240,12 +246,20 @@ class _TideModule(nn.Module):
             The output Tensor of shape (batch_size, output_chunk_length, output_dim)
         """
 
-        # x has shape (batch_size, input_chunk_length, input_dim)
+        # x has shape (batch_size, input_chunk_length, input_dim), with the target
+        # first, then the past covariates, then the history of the future covariates
         # x_future_covariates has shape (batch_size, input_chunk_length, future_cov_dim)
         # x_static_covariates has shape (batch_size, static_cov_dim)
         x, x_future_covariates, x_static_covariates = x_in
 
         x_lookback = x[:, :, : self.output_dim]
+
+        if self.past_cov_dim > 0:
+            x_past_covariates = x[
+                :, :, self.output_dim : self.output_dim + self.past_cov_dim
+            ]
+        else:
+            x_past_covariates = None
 
         # future covariates: feature projection or raw features
         # historical future covariates need to be extracted from x and
@@ -273,6 +287,7 @@ class _TideModule(nn.Module):
         # setup input to encoder
         encoded = [
             x_lookback,
+            x_past_covariates,
             x_dynamic_future_covariates,
             x_static_covariates,
         ]
