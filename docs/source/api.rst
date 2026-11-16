@@ -6,6 +6,7 @@ API
 
    | You are viewing Documentation of v1 API. A New API version 2 is in development.
    | Try it out before release: :doc:`v2 API Reference <api_v2>`
+   | Migrating a v1 workflow to v2? See the :doc:`v1 to v2 migration guide <migration-v1-v2>`.
    | **Caution: v2 is WIP and unstable. Not yet production-ready.**
 
 .. toctree::
