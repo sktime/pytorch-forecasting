@@ -1,4 +1,3 @@
-from dataclasses import replace
 import inspect
 from pathlib import Path
 import pickle
@@ -7,7 +6,6 @@ from typing import Any
 from lightning import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint, ModelSummary
 from lightning.pytorch.core.datamodule import LightningDataModule
-import pandas as pd
 import torch
 import yaml
 
@@ -264,31 +262,27 @@ class BaseForecaster(_BasePtObject_v2):
         if isinstance(y, (list, tuple)):
             y = torch.stack(list(y), dim=2)
         n_windows, pred_len = y.shape[:2]
-        y = y.reshape(n_windows * pred_len, -1).numpy()
-
-        target = list(metadata["cols"]["y"])
-        if not label_targets or len(target) != y.shape[1]:
-            target = [f"y{i}" for i in range(y.shape[1])]
-
-        origin = index.pop(f"{time}_origin")
-        for i, col in enumerate(target):
-            index[col] = y[:, i]
+        n_rows = n_windows * pred_len
 
         info = dict(info or {})
         y_true = info.pop("y", None)
-        ts = TimeSeries(
-            pd.DataFrame(index), time=time, target=target, group=group or None
-        )
-        ts.metadata = replace(ts.metadata, is_prediction=True)
-        ts.info = info
-        ts.data[f"{time}_origin"] = origin
+        if isinstance(y_true, (list, tuple)):
+            y_true = torch.stack(list(y_true), dim=-1)
+
+        extra = {f"{time}_origin": index[f"{time}_origin"]}
         if y_true is not None:
-            if isinstance(y_true, (list, tuple)):
-                y_true = torch.stack(list(y_true), dim=-1)
-            y_true = y_true.reshape(n_windows * pred_len, -1).numpy()
-            for i, col in enumerate(metadata["cols"]["y"]):
-                ts.data[f"{col}_actual"] = y_true[:, i]
-        return ts
+            y_true = y_true.reshape(n_rows, -1).numpy()
+            names = metadata["cols"]["y"]
+            extra.update({f"{c}_actual": y_true[:, i] for i, c in enumerate(names)})
+
+        return TimeSeries.from_tensors(
+            {"y": y.reshape(n_rows, -1), "t": torch.as_tensor(index[time])},
+            metadata=metadata if label_targets else None,
+            groups={g: index[g] for g in group},
+            info=info,
+            time=time,
+            extra=extra,
+        )
 
     def _save_artifact(self, output_dir: Path):
         """Save all configuration artifacts."""
