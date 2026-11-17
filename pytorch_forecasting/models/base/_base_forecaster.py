@@ -226,7 +226,7 @@ class BaseForecaster(_BasePtObject_v2):
         Parameters
         ----------
         y : torch.Tensor or list of torch.Tensor
-            Model output tensor, in the space of the original target.
+            Model output tensor .
         index : dict of str to np.ndarray
             As returned by the datamodule's ``window_index``, one entry per
             forecast step. Used as the frame of the result.
