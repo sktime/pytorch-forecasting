@@ -137,9 +137,7 @@ class DecoderMLPForecaster(BaseForecaster):
         Returns
         -------
         params : list of dict
-            Parameters to create testing instances of the class. Each dict is passed
-            as ``model_cfg`` to the package constructor; the ``"datamodule_cfg"`` key
-            is forwarded to the datamodule constructor.
+            Parameters to create testing instances of the class.
         """
         from pytorch_forecasting.metrics import MAE, RMSE, SMAPE, QuantileLoss
 

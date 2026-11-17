@@ -470,9 +470,7 @@ def test_refit_new_schema(forecaster_for_test, sample_pandas_data_for_test):
     _fit_forecaster(forecaster_for_test, _make_forecaster_data(df))
     _fit_forecaster(forecaster_for_test, narrow)
 
-    out = forecaster_for_test.predict(
-        narrow, mode="prediction", trainer_kwargs=TRAINER_KWARGS_TEST
-    )
+    out = forecaster_for_test.predict(narrow, mode="prediction")
 
     assert out.metadata.is_prediction
     assert len(out.to_pandas()) % MAX_PREDICTION_LENGTH_TEST == 0

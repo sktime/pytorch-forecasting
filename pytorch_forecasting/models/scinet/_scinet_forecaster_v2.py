@@ -11,7 +11,7 @@ from pytorch_forecasting.models.base._base_forecaster import BaseForecaster
 
 
 class SCINetForecaster(BaseForecaster):
-    """SCINet forecaster (v2).
+    """SCINet forecaster.
 
     Parameters
     ----------
@@ -150,9 +150,6 @@ class SCINetForecaster(BaseForecaster):
         -------
         params : list of dict
             Parameters to create testing instances of the class.
-            Each dict is passed as ``model_cfg`` to the package constructor.
-            The key ``"datamodule_cfg"`` inside each dict is forwarded to
-            the datamodule constructor.
         """
         from pytorch_forecasting.metrics import MAE, SMAPE
 

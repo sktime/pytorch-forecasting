@@ -99,9 +99,13 @@ See the detailed API documentation for the available V2 Package classes below:
    models.samformer._samformer_forecaster_v2.SamformerForecaster
    models.tide._tide_dsipts._tide_forecaster_v2.TIDEForecaster
    models.timexer._timexer_forecaster_v2.TimeXerForecaster
+   models.tsmixer._tsmixer_pkg_v2.TSMixer_pkg_v2
    models.xlstm._xlstm_forecaster_v2.xLSTMTimeForecaster
    models.mlp._decodermlp_forecaster_v2.DecoderMLPForecaster
    models.softs._softs_forecaster_v2.SOFTSForecaster
    models.scinet._scinet_forecaster_v2.SCINetForecaster
    models.patch_tst._patch_tst_forecaster_v2.PatchTSTForecaster
    models.frets._frets_forecaster_v2.FreTSForecaster
+   models.modern_tcn._modern_tcn_pkg_v2.ModernTCN_pkg_v2
+   models.units._units_pkg_v2.UniTS_pkg_v2
+   models.nhits._nhits_pkg_v2.NHiTS_pkg_v2
