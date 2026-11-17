@@ -101,3 +101,30 @@ def test_interpretation(model, dataloaders_fixed_window_without_covariates):
         fast_dev_run=True,
     )
     model.plot_interpretation(raw_predictions.x, raw_predictions.output, idx=0)
+
+
+import torch
+
+
+def test_nbeats_negative_invalid_tensor_shape():
+    """
+    Test that N-BEATS correctly fails when fed an invalid tensor shape
+    in the forward pass (negative test for Roadmap #1993).
+    """
+    # Initialize a minimal N-BEATS model independent of the dataloader fixtures
+    model = NBeats(
+        stack_types=["generic"],
+        prediction_length=5,
+        context_length=10,
+        widths=[32],
+        num_blocks=[1],
+        num_block_layers=[2],
+    )
+
+    # N-BEATS expects 3D tensors for continuous variables.
+    # Pass a 1D tensor to trigger a shape validation failure.
+    bad_x = {"encoder_cont": torch.randn(10)}
+
+    # Assert that the forward pass safely catches the bad shape and crashes
+    with pytest.raises((RuntimeError, ValueError, IndexError)):
+        model(bad_x)
