@@ -31,6 +31,13 @@ def _clone_trainer(trainer: Trainer) -> Trainer:
     return Trainer(**kwargs)
 
 
+def _flatten(y: torch.Tensor | list[torch.Tensor]) -> torch.Tensor:
+    """Stack per-target outputs and flatten to one row per forecast step."""
+    if isinstance(y, (list, tuple)):
+        y = torch.stack(list(y), dim=2)
+    return y.reshape(y.shape[0] * y.shape[1], -1)
+
+
 class BaseForecaster(_BasePtObject_v2):
     """
     Base forecaster class acting as a high-level wrapper for the ptf workflow.
@@ -259,28 +266,20 @@ class BaseForecaster(_BasePtObject_v2):
             The origin and actual columns are not part of the schema, only of
             the frame.
         """
-        if isinstance(y, (list, tuple)):
-            y = torch.stack(list(y), dim=2)
-        n_windows, pred_len = y.shape[:2]
-        n_rows = n_windows * pred_len
-
         info = dict(info or {})
         y_true = info.pop("y", None)
-        if isinstance(y_true, (list, tuple)):
-            y_true = torch.stack(list(y_true), dim=-1)
-
-        extra = {f"{time}_origin": index[f"{time}_origin"]}
+        extra = {k: v for k, v in index.items() if k != time and k not in group}
         if y_true is not None:
-            y_true = y_true.reshape(n_rows, -1).numpy()
+            y_true = _flatten(y_true).numpy()
             names = metadata["cols"]["y"]
             extra.update({f"{c}_actual": y_true[:, i] for i, c in enumerate(names)})
 
         return TimeSeries.from_tensors(
-            {"y": y.reshape(n_rows, -1), "t": torch.as_tensor(index[time])},
+            {"y": _flatten(y), "t": torch.as_tensor(index[time])},
+            time=time,
             metadata=metadata if label_targets else None,
             groups={g: index[g] for g in group},
             info=info,
-            time=time,
             extra=extra,
         )
 
@@ -404,9 +403,7 @@ class BaseForecaster(_BasePtObject_v2):
             with ``metadata.is_prediction=True``, one row per forecast step and
             the ``return_info`` outputs in its ``info`` dict, except ``"y"``,
             which becomes one ``<target>_actual`` column per target in the
-            frame. Values are in the space of the original target. For
-            ``mode="raw"``, the model's dict, in the space of the fitted target
-            normalizer.
+            frame. For ``mode="raw"``, the model's dict.
         """
         if self.model is None:
             raise RuntimeError(

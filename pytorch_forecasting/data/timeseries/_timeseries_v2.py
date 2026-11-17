@@ -513,15 +513,12 @@ class TimeSeries(Dataset):
 
         groups = groups or {}
         extra = extra or {}
-        columns = {"t": tensors.get("t"), **groups, **extra}
-        wrong = {
-            k: len(v) for k, v in columns.items() if v is not None and len(v) != n_rows
-        }
-        if wrong:
-            raise ValueError(
-                f"{sorted(wrong)} must have one entry per row of `y` ({n_rows}), "
-                f"got lengths {wrong}."
-            )
+        for name, value in (("t", tensors.get("t")), *groups.items(), *extra.items()):
+            if value is not None and len(value) != n_rows:
+                raise ValueError(
+                    f"`{name}` must have one entry per row of `y` ({n_rows}), "
+                    f"got {len(value)}."
+                )
 
         target = list(metadata["cols"]["y"]) if metadata is not None else []
         if len(target) != n_targets:
@@ -533,14 +530,13 @@ class TimeSeries(Dataset):
         else:
             t = t.detach().cpu().numpy().reshape(-1)
 
-        group_cols = {k: np.asarray(v).reshape(-1) for k, v in groups.items()}
-        df = pd.DataFrame({**group_cols, time: t})
+        df = pd.DataFrame({**groups, time: t})
         for i, col in enumerate(target):
             df[col] = y[:, i]
 
-        obj = cls(df, time=time, target=target, group=list(group_cols) or None)
+        obj = cls(df, time=time, target=target, group=list(groups) or None)
         obj.metadata = replace(obj.metadata, is_prediction=True)
         obj.info = info or {}
         for col, value in extra.items():
-            obj.data[col] = np.asarray(value).reshape(-1)
+            obj.data[col] = value
         return obj
