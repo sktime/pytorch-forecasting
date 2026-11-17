@@ -558,13 +558,14 @@ def move_to_device(
         for name in x.keys():
             x[name] = move_to_device(x[name], device=device)
     elif isinstance(x, OutputMixIn):
-        for xi in x:
-            move_to_device(xi, device=device)
-        return x
+        x = x.__class__(
+            **{name: move_to_device(xi, device=device) for name, xi in x.items()}
+        )
     elif isinstance(x, torch.Tensor) and x.device != device:
         x = x.to(device)
-    elif isinstance(x, tuple | list) and x[0].device != device:
-        x = [move_to_device(xi, device=device) for xi in x]
+    elif isinstance(x, tuple | list):
+        items = [move_to_device(xi, device=device) for xi in x]
+        x = x.__class__(*items) if hasattr(x, "_fields") else x.__class__(items)
     return x
 
 
