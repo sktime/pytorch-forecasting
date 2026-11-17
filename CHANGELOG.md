@@ -59,6 +59,7 @@ Version release focusing on:
 
 ### Fixes
 
+* [BUG] Fix `NHiTS.forward()` `NameError` when dataset has static reals but no time-varying encoder covariates (#2243) @kpal002
 * [BUG] Import issue for `SettingWithCopyWarning` fixed (#2036) @lucifer4073
 * [BUG] Remove outdated strict naming convention test in test_all_estim… (#2190) @AyushDineshRathi
 * [BUG] Fix _load_config() to support .pkl file paths (#2199) @Quant-Code-Hacker
