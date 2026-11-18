@@ -573,6 +573,30 @@ def test_MASE():
     assert (scaling > 0).all(), "Scaling should be positive"
 
 
+def test_MASE_with_weight():
+    """MASE must accept per-time-step weights when batch_size != decoder_length."""
+    from pytorch_forecasting.metrics import MASE
+
+    batch_size = 4
+    encoder_length = 10
+    decoder_length = 3  # != batch_size, which triggered the broadcasting bug
+
+    encoder_target = torch.rand((batch_size, encoder_length))
+    decoder_target = torch.rand((batch_size, decoder_length))
+    y_pred = torch.rand((batch_size, decoder_length))
+    encoder_lengths = torch.full((batch_size,), encoder_length, dtype=torch.long)
+    weight = torch.ones((batch_size, decoder_length))
+
+    weighted = MASE()
+    weighted.update(y_pred, (decoder_target, weight), encoder_target, encoder_lengths)
+
+    unweighted = MASE()
+    unweighted.update(y_pred, decoder_target, encoder_target, encoder_lengths)
+
+    # unit weights must not change the result
+    torch.testing.assert_close(weighted.compute(), unweighted.compute())
+
+
 def test_QuantileLoss_to_prediction_fallback():
     """Test to_prediction selects median when present, nearest quantile otherwise."""
 
