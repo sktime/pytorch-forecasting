@@ -445,10 +445,11 @@ class TimeSeries(Dataset):
     def from_tensors(
         cls,
         tensors: dict[str, torch.Tensor],
+        time: str,
         metadata: TimeSeriesMetadata | dict | None = None,
-        group_starts: list[int] | None = None,
-        groups: np.ndarray | list | None = None,
+        groups: dict | None = None,
         info: dict | None = None,
+        extra: dict | None = None,
     ) -> "TimeSeries":
         """Construct a ``TimeSeries`` of predictions from model output tensors.
 
@@ -457,30 +458,40 @@ class TimeSeries(Dataset):
         tensors : dict of str to torch.Tensor
             must contain ``"y"``, of shape ``(n, n_targets)`` or ``(n,)``.
             May contain ``"t"``, of shape ``(n,)``; defaults to ``arange(n)``.
+        time : str
+            name of the time column, which holds ``tensors["t"]``.
         metadata : TimeSeriesMetadata or dict, optional
             schema the tensors were produced against; only ``cols["y"]`` is used,
             to name the target columns. Without
             usable names, targets are called ``y0``, ``y1``, ...
-        group_starts : list of int, optional
-            row offsets at which each series begins.
-        groups : np.ndarray or list, optional
-            per-row series labels. Takes precedence over ``group_starts``.
-            With neither, all rows are one series.
+        groups : dict, optional
+            maps each group column name to its per-row values, e.g.
+            ``{"store": [...], "item": [...]}``. Without it, the result has no
+            group column and all rows are one series.
         info : dict, optional
             extra outputs that belong to the predictions but are not row-wise,
             e.g. the per-window model inputs. Stored as ``info`` on the result.
+        extra : dict, optional
+            per-row columns to add to the frame, e.g. the actual values. They
+            are not part of the schema. Models do not read them as features.
 
         Returns
         -------
         TimeSeries
-            with columns ``_series``, ``_time_idx`` and one per target,
-            ``metadata.is_prediction`` set to ``True`` and ``info`` attached.
+            ``metadata.is_prediction`` is ``True`` and ``info`` is attached.
+            The columns are, in order
+
+            * the keys of ``groups``.
+            * ``time``, holding ``tensors["t"]``.
+            * one column per target, named as described under ``metadata``.
+            * the ``extra`` columns.
 
         Raises
         ------
         ValueError
-            If ``"y"`` is missing, is not 1- or 2-dimensional, or if ``t`` or
-            ``groups`` does not have one entry per row of ``y``.
+            If ``"y"`` is missing, is not 1- or 2-dimensional, or if ``t``,
+            ``groups`` or an ``extra`` column does not have one entry per row
+            of ``y``.
         """
         if "y" not in tensors:
             raise ValueError(
@@ -500,7 +511,9 @@ class TimeSeries(Dataset):
         y = y.detach().cpu().numpy()
         n_rows, n_targets = y.shape
 
-        for name, value in (("t", tensors.get("t")), ("groups", groups)):
+        groups = groups or {}
+        extra = extra or {}
+        for name, value in (("t", tensors.get("t")), *groups.items(), *extra.items()):
             if value is not None and len(value) != n_rows:
                 raise ValueError(
                     f"`{name}` must have one entry per row of `y` ({n_rows}), "
@@ -517,20 +530,13 @@ class TimeSeries(Dataset):
         else:
             t = t.detach().cpu().numpy().reshape(-1)
 
-        if groups is not None:
-            series = np.asarray(groups).reshape(-1)
-        elif group_starts is not None:
-            series = np.zeros(n_rows, dtype=int)
-            series[np.asarray(group_starts, dtype=int)[1:]] = 1
-            series = np.cumsum(series)
-        else:
-            series = np.zeros(n_rows, dtype=int)
-
-        df = pd.DataFrame({"_series": series, "_time_idx": t})
+        df = pd.DataFrame({**groups, time: t})
         for i, col in enumerate(target):
             df[col] = y[:, i]
 
-        obj = cls(df, time="_time_idx", target=target, group=["_series"])
+        obj = cls(df, time=time, target=target, group=list(groups) or None)
         obj.metadata = replace(obj.metadata, is_prediction=True)
         obj.info = info or {}
+        for col, value in extra.items():
+            obj.data[col] = value
         return obj
