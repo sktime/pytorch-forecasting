@@ -6,6 +6,7 @@ import torch.nn.functional as F
 
 from pytorch_forecasting.layers import AttentionLayer, FullAttention
 
+
 class DSW_embedding(nn.Module):
     def __init__(self, seg_len, d_model):
         super().__init__()
