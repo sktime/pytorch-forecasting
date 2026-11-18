@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from skbase.utils.dependencies import _check_soft_dependencies
+import torch
 
 from pytorch_forecasting.data.timeseries import TimeSeriesDataSet
 from pytorch_forecasting.metrics import SMAPE
@@ -268,4 +269,92 @@ def test_no_exogenous_variable():
         return_x=True,
         return_y=True,
         return_index=True,
+    )
+
+
+def _past_covariates_dataset(**kwargs):
+    rng = np.random.default_rng(0)
+    n_groups, n_steps = 4, 40
+    data = pd.DataFrame(
+        {
+            "group_id": np.repeat(np.arange(n_groups), n_steps),
+            "time_idx": np.tile(np.arange(n_steps), n_groups),
+            "target": rng.normal(size=n_groups * n_steps),
+            "past_1": rng.normal(size=n_groups * n_steps),
+            "past_2": rng.normal(size=n_groups * n_steps),
+            "known_1": rng.normal(size=n_groups * n_steps),
+            "known_2": rng.normal(size=n_groups * n_steps),
+            "past_cat": rng.choice(["a", "b"], size=n_groups * n_steps),
+            "known_cat": rng.choice(["c", "d", "e"], size=n_groups * n_steps),
+        }
+    )
+    return TimeSeriesDataSet(
+        data,
+        time_idx="time_idx",
+        target="target",
+        group_ids=["group_id"],
+        max_encoder_length=10,
+        max_prediction_length=5,
+        **kwargs,
+    )
+
+
+@pytest.mark.parametrize(
+    "dataset_kwargs",
+    [
+        dict(
+            time_varying_unknown_reals=["target", "past_1"],
+            time_varying_known_reals=["known_1"],
+        ),
+        dict(time_varying_unknown_reals=["target", "past_1", "past_2"]),
+        dict(
+            time_varying_unknown_reals=["target", "past_1"],
+            time_varying_known_reals=["known_1"],
+            time_varying_unknown_categoricals=["past_cat"],
+            time_varying_known_categoricals=["known_cat"],
+        ),
+    ],
+)
+def test_past_covariates(dataset_kwargs):
+    # covariates known only in the past, i.e. unknown reals or categoricals
+    # besides the target, failed with a tensor size mismatch (#1842)
+    dataset = _past_covariates_dataset(**dataset_kwargs)
+    model = TiDEModel.from_dataset(dataset, hidden_size=8)
+    prediction = model.predict(
+        dataset.to_dataloader(train=False, batch_size=8),
+        trainer_kwargs=dict(logger=False, enable_progress_bar=False),
+    )
+    assert prediction.shape == (len(dataset), 5)
+    assert torch.isfinite(prediction).all()
+
+
+def test_past_covariates_input_layout():
+    # the module reads the target, then the past covariates, then the history
+    # of the known covariates, which has to line up with their future values
+    dataset = _past_covariates_dataset(
+        time_varying_unknown_reals=["past_1", "target", "past_2"],
+        time_varying_known_reals=["known_1", "known_2"],
+    )
+    model = TiDEModel.from_dataset(dataset, hidden_size=8)
+    assert model.model.past_cov_dim == 2
+    assert model.model.future_cov_dim == 2
+
+    module_inputs = []
+    model.model.register_forward_pre_hook(
+        lambda module, args: module_inputs.append(args[0])
+    )
+    x, _ = next(iter(dataset.to_dataloader(train=False, batch_size=4)))
+    model(x)
+
+    x_past, x_future, _ = module_inputs[0]
+
+    def columns(cont, names):
+        return cont[..., [dataset.reals.index(name) for name in names]]
+
+    expected_past = columns(
+        x["encoder_cont"], ["target", "past_1", "past_2", "known_1", "known_2"]
+    )
+    torch.testing.assert_close(x_past, expected_past)
+    torch.testing.assert_close(
+        x_future, columns(x["decoder_cont"], ["known_1", "known_2"])
     )
