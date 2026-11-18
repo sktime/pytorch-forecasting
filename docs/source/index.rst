@@ -73,6 +73,7 @@ The :ref:`Tutorials <tutorials>` section provides guidance on how to use models 
    metrics
    faq
    installation
+   developer_guide
    api
    model_list
    CHANGELOG
