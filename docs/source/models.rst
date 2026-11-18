@@ -138,6 +138,26 @@ Availability of covariates
 If you have covariates, that is variables in addition to the target variable itself that hold information
 about the target, then your case will benefit from a model that can accommodate covariates. A model that
 cannot use covariates is :py:class:`~pytorch_forecasting.models.nbeats.NBeats`.
+Its covariate-ready counterpart, :py:class:`~pytorch_forecasting.models.nbeats.NBeatsX`,
+supports static features, historical covariates, and known future covariates for
+fixed-length, single-target point forecasts. It offers generic stacks and an
+interpretable configuration with trend, seasonality, and exogenous bases::
+
+    from pytorch_forecasting import NBeatsX
+
+    model = NBeatsX.from_dataset(training, widths=[64])
+    interpretable = NBeatsX.from_dataset(
+        training,
+        stack_types=["trend", "seasonality", "exogenous"],
+        widths=[64],
+    )
+
+Exogenous stacks require known temporal covariates in both encoder and decoder.
+Unknown future values are excluded from all model inputs. Block contributions
+are returned in normalized target space; predictions are returned in target units.
+This implementation follows the generic and interpretable bases in the
+`NBEATSx paper <https://arxiv.org/abs/2104.05522>`_. It does not include the paper's
+convolutional exogenous encoders or ensemble training procedure.
 
 Length of timeseries
 ^^^^^^^^^^^^^^^^^^^^^^

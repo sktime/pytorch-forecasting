@@ -5,12 +5,14 @@ import pandas as pd
 from skbase.utils.dependencies import _check_soft_dependencies
 import torch
 
-from pytorch_forecasting import TimeSeriesDataSet
-from pytorch_forecasting.data import EncoderNormalizer, GroupNormalizer, NaNLabelEncoder
+from pytorch_forecasting.data import (
+    EncoderNormalizer,
+    GroupNormalizer,
+    NaNLabelEncoder,
+    TimeSeriesDataSet,
+)
 from pytorch_forecasting.data.examples import generate_ar_data, get_stallion_data
 from pytorch_forecasting.data.timeseries import TimeSeries
-
-torch.manual_seed(23)
 
 
 def data_with_covariates():

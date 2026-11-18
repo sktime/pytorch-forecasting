@@ -363,21 +363,15 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
         encoder_cat_count = len(self.categorical_indices)
         encoder_cont_count = len(self.continuous_indices)
 
-        decoder_cat_count = len(
-            [
-                col
-                for col in self.time_series_metadata["cols"]["x"]
-                if self.time_series_metadata["col_type"].get(col) == "C"
-                and self.time_series_metadata["col_known"].get(col) == "K"
-            ]
-        )
-        decoder_cont_count = len(
-            [
-                col
-                for col in self.time_series_metadata["cols"]["x"]
-                if self.time_series_metadata["col_type"].get(col) == "F"
-                and self.time_series_metadata["col_known"].get(col) == "K"
-            ]
+        schema = self.time_series_metadata
+        feature_cols = schema["cols"]["x"]
+        known_cat_indices, known_cont_indices = (
+            tuple(
+                i
+                for i, idx in enumerate(indices)
+                if schema["col_known"].get(feature_cols[idx]) == "K"
+            )
+            for indices in (self.categorical_indices, self.continuous_indices)
         )
 
         static_cols = self.time_series_metadata["cols"]["st"]
@@ -392,8 +386,8 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
         return EncDecDataModuleMetadata(
             encoder_cat=encoder_cat_count,
             encoder_cont=encoder_cont_count,
-            decoder_cat=decoder_cat_count,
-            decoder_cont=decoder_cont_count,
+            decoder_cat=len(known_cat_indices),
+            decoder_cont=len(known_cont_indices),
             target=len(self.time_series_metadata["cols"]["y"]),
             static_categorical_features=static_cat_count,
             static_continuous_features=len(static_cols) - static_cat_count,
@@ -401,6 +395,11 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
             max_prediction_length=self.max_prediction_length,
             min_encoder_length=self._min_encoder_length,
             min_prediction_length=self._min_prediction_length,
+            known_cat_indices=known_cat_indices,
+            known_cont_indices=known_cont_indices,
+            target_is_categorical=any(
+                schema["col_type"].get(col) == "C" for col in schema["cols"]["y"]
+            ),
         )
 
     def _get_group_dataframe(
@@ -762,49 +761,13 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
                     )
 
             features = data["features"]
-            metadata = self.data_module.time_series_metadata
-
-            known_cat_indices = [
-                i
-                for i, col in enumerate(metadata["cols"]["x"])
-                if metadata["col_type"].get(col) == "C"
-                and metadata["col_known"].get(col) == "K"
+            metadata = self.data_module.metadata
+            decoder_cat = features["categorical"][decoder_indices][
+                :, metadata.known_cat_indices
             ]
-
-            known_cont_indices = [
-                i
-                for i, col in enumerate(metadata["cols"]["x"])
-                if metadata["col_type"].get(col) == "F"
-                and metadata["col_known"].get(col) == "K"
+            decoder_cont = features["continuous"][decoder_indices][
+                :, metadata.known_cont_indices
             ]
-
-            cat_map = {
-                orig_idx: i
-                for i, orig_idx in enumerate(self.data_module.categorical_indices)
-            }
-            cont_map = {
-                orig_idx: i
-                for i, orig_idx in enumerate(self.data_module.continuous_indices)
-            }
-
-            mapped_known_cat_indices = [
-                cat_map[idx] for idx in known_cat_indices if idx in cat_map
-            ]
-            mapped_known_cont_indices = [
-                cont_map[idx] for idx in known_cont_indices if idx in cont_map
-            ]
-
-            decoder_cat = (
-                features["categorical"][decoder_indices][:, mapped_known_cat_indices]
-                if mapped_known_cat_indices
-                else torch.zeros((pred_length, 0))
-            )
-
-            decoder_cont = (
-                features["continuous"][decoder_indices][:, mapped_known_cont_indices]
-                if mapped_known_cont_indices
-                else torch.zeros((pred_length, 0))
-            )
 
             x = {
                 "encoder_cat": encoder_cat,
@@ -889,6 +852,7 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
             series_idx = idx.item()
             sample = self.time_series[series_idx]
             sequence_length = len(sample["y"])
+            observed = sample["t"] <= sample["cutoff_time"]
 
             if sequence_length < self.max_encoder_length + self.max_prediction_length:
                 continue
@@ -910,6 +874,7 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
                 if (
                     start_idx + self.max_encoder_length + self.max_prediction_length
                     <= sequence_length
+                    and observed[start_idx : start_idx + self.max_encoder_length].all()
                 ):
                     windows.append(
                         (
