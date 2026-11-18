@@ -4,6 +4,7 @@ API v2
 .. warning::
     Please note that the v2 modules are currently in active-development and is in beta right now, so please use this API with caution.
     See v1 documentation :doc:`here <api>` - it is stable and can be used in the production pipelines.
+    Migrating an existing model implementation to v2? See :doc:`migration_v1_to_v2`.
 
 .. currentmodule:: pytorch_forecasting
 
