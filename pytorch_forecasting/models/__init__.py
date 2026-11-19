@@ -9,6 +9,10 @@ from pytorch_forecasting.models.base import (
     BaseModelWithCovariates,
 )
 from pytorch_forecasting.models.baseline import Baseline
+from pytorch_forecasting.models.crossformer import (
+    CrossFormer,
+    CrossFormerForecaster,
+)
 from pytorch_forecasting.models.deepar import DeepAR
 from pytorch_forecasting.models.frets import FreTS, FreTSForecaster
 from pytorch_forecasting.models.mlp import DecoderMLP
@@ -46,6 +50,8 @@ __all__ = [
     "DeepAR",
     "BaseModel",
     "Baseline",
+    "CrossFormer",
+    "CrossFormerForecaster",
     "BaseModelWithCovariates",
     "AutoRegressiveBaseModel",
     "AutoRegressiveBaseModelWithCovariates",
