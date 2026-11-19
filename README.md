@@ -14,6 +14,9 @@ _PyTorch Forecasting_ is a PyTorch-based package for forecasting with state-of-t
 [coverage-image]: https://codecov.io/gh/sktime/pytorch-forecasting/branch/main/graph/badge.svg
 [coverage-url]: https://codecov.io/github/sktime/pytorch-forecasting?branch=main
 
+> [!NOTE]
+> We are working on a v2 redesign. It is unstable and not production-ready, for production pipelines please use v1. But we would like to have your feedback on it ([#1736](https://github.com/sktime/pytorch-forecasting/issues/1736) or [#1974](https://github.com/sktime/pytorch-forecasting/issues/1974)). The package has both v1 and v2 code. See the [v2 API reference](https://pytorch-forecasting.readthedocs.io/en/latest/api_v2.html) and [v2 tutorials](https://pytorch-forecasting.readthedocs.io/en/latest/tutorials_v2.html).
+
 ---
 
 Our article on [Towards Data Science](https://towardsdatascience.com/introducing-pytorch-forecasting-64de99b9ef46) introduces the package and provides background information.
