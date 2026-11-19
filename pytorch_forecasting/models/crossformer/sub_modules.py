@@ -2,7 +2,6 @@ import math
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from pytorch_forecasting.layers import AttentionLayer, FullAttention
 
@@ -17,56 +16,49 @@ class DSW_embedding(nn.Module):
         batch, ts_len, ts_dim = x.shape
         seg_num = ts_len // self.seg_len
 
-        x_segment = x.reshape(
-            batch, seg_num, self.seg_len, ts_dim
-        )
+        x_segment = x.reshape(batch, seg_num, self.seg_len, ts_dim)
         x_segment = x_segment.permute(0, 3, 1, 2)
         x_segment = x_segment.reshape(-1, self.seg_len)
 
         x_embed = self.linear(x_segment)
-        x_embed = x_embed.reshape(
-            batch, ts_dim, seg_num, -1
-        )
+        x_embed = x_embed.reshape(batch, ts_dim, seg_num, -1)
 
         return x_embed
 
 
 class TwoStageAttentionLayer(nn.Module):
-    '''
+    """
     The Two Stage Attention (TSA) Layer
     input/output shape: [batch_size, Data_dim(D), Seg_num(L), d_model]
-    '''
-    def __init__(self, seg_num, factor, d_model, n_heads, d_ff = None, dropout=0.1):
+    """
+
+    def __init__(self, seg_num, factor, d_model, n_heads, d_ff=None, dropout=0.1):
         super().__init__()
-        d_ff = d_ff or 4*d_model
+        d_ff = d_ff or 4 * d_model
 
         self.time_attention = AttentionLayer(
-            FullAttention(mask_flag=False,
-                use_efficient_attention=True,
-                attention_dropout=dropout
+            FullAttention(
+                mask_flag=False, use_efficient_attention=True, attention_dropout=dropout
             ),
-            d_model = d_model,
-            n_heads = n_heads
+            d_model=d_model,
+            n_heads=n_heads,
         )
 
         self.dim_sender = AttentionLayer(
-            FullAttention(mask_flag=False,
-                use_efficient_attention=True,
-                attention_dropout=dropout
+            FullAttention(
+                mask_flag=False, use_efficient_attention=True, attention_dropout=dropout
             ),
-            d_model = d_model,
-            n_heads = n_heads
+            d_model=d_model,
+            n_heads=n_heads,
         )
 
         self.dim_receiver = AttentionLayer(
-            FullAttention(mask_flag=False,
-                use_efficient_attention=True,
-                attention_dropout=dropout
+            FullAttention(
+                mask_flag=False, use_efficient_attention=True, attention_dropout=dropout
             ),
-            d_model = d_model,
-            n_heads = n_heads
+            d_model=d_model,
+            n_heads=n_heads,
         )
-
 
         self.router = nn.Parameter(torch.randn(seg_num, factor, d_model))
 
@@ -77,34 +69,28 @@ class TwoStageAttentionLayer(nn.Module):
         self.norm3 = nn.LayerNorm(d_model)
         self.norm4 = nn.LayerNorm(d_model)
 
-        self.MLP1 = nn.Sequential(nn.Linear(d_model, d_ff),
-                                nn.GELU(),
-                                nn.Linear(d_ff, d_model))
-        self.MLP2 = nn.Sequential(nn.Linear(d_model, d_ff),
-                                nn.GELU(),
-                                nn.Linear(d_ff, d_model))
+        self.MLP1 = nn.Sequential(
+            nn.Linear(d_model, d_ff), nn.GELU(), nn.Linear(d_ff, d_model)
+        )
+        self.MLP2 = nn.Sequential(
+            nn.Linear(d_model, d_ff), nn.GELU(), nn.Linear(d_ff, d_model)
+        )
 
     def forward(self, x):
-        #Cross Time Stage: Directly apply MSA to each dimension
+        # Cross Time Stage: Directly apply MSA to each dimension
         batch, ts_d, seg_num, d_model = x.shape
         time_in = x.reshape(batch * ts_d, seg_num, d_model)
 
-        time_enc, _ = self.time_attention(
-            time_in, time_in, time_in, attn_mask=None
-        )
+        time_enc, _ = self.time_attention(time_in, time_in, time_in, attn_mask=None)
         dim_in = time_in + self.dropout(time_enc)
         dim_in = self.norm1(dim_in)
         dim_in = dim_in + self.dropout(self.MLP1(dim_in))
         dim_in = self.norm2(dim_in)
 
-        dim_send = dim_in.reshape(
-            batch, ts_d, seg_num, d_model
-        )
+        dim_send = dim_in.reshape(batch, ts_d, seg_num, d_model)
         dim_send = dim_send.permute(0, 2, 1, 3)
 
-        dim_send = dim_send.reshape(
-            batch * seg_num, ts_d, d_model
-        )
+        dim_send = dim_send.reshape(batch * seg_num, ts_d, d_model)
 
         batch_router = (
             self.router.unsqueeze(0)
@@ -113,17 +99,11 @@ class TwoStageAttentionLayer(nn.Module):
         )
 
         dim_buffer, _ = self.dim_sender(
-            batch_router,
-            dim_send,
-            dim_send,
-            attn_mask=None
+            batch_router, dim_send, dim_send, attn_mask=None
         )
 
         dim_receive, _ = self.dim_receiver(
-            dim_send,
-            dim_buffer,
-            dim_buffer,
-            attn_mask=None
+            dim_send, dim_buffer, dim_buffer, attn_mask=None
         )
 
         dim_enc = dim_send + self.dropout(dim_receive)
@@ -132,21 +112,20 @@ class TwoStageAttentionLayer(nn.Module):
         dim_enc = dim_enc + self.dropout(self.MLP2(dim_enc))
         dim_enc = self.norm4(dim_enc)
 
-        final_out = dim_enc.reshape(
-            batch, seg_num, ts_d, d_model
-        )
+        final_out = dim_enc.reshape(batch, seg_num, ts_d, d_model)
 
         final_out = final_out.permute(0, 2, 1, 3).contiguous()
         return final_out
 
 
 class SegMerging(nn.Module):
-    '''
+    """
     Segment Merging Layer.
     The adjacent `win_size' segments in each dimension will be merged into one segment
     to get representation of a coarser scale
     we set win_size = 2 in our paper
-    '''
+    """
+
     def __init__(self, d_model, win_size, norm_layer=nn.LayerNorm):
         super().__init__()
         self.d_model = d_model
@@ -162,11 +141,11 @@ class SegMerging(nn.Module):
         pad_num = seg_num % self.win_size
         if pad_num != 0:
             pad_num = self.win_size - pad_num
-            x = torch.cat((x, x[:, :, -pad_num:, :]), dim = -2)
+            x = torch.cat((x, x[:, :, -pad_num:, :]), dim=-2)
 
         seg_to_merge = []
         for i in range(self.win_size):
-            seg_to_merge.append(x[:, :, i::self.win_size, :])
+            seg_to_merge.append(x[:, :, i :: self.win_size, :])
         x = torch.cat(seg_to_merge, -1)  # [B, ts_d, seg_num/win_size, win_size*d_model]
 
         x = self.norm(x)
@@ -176,16 +155,18 @@ class SegMerging(nn.Module):
 
 
 class scale_block(nn.Module):
-    '''
+    """
     We can use one segment merging layer followed by multiple TSA layers in each scale
     the parameter `depth' determines the number of TSA layers used in each scale
     We set depth = 1 in the paper
-    '''
-    def __init__(self, win_size, d_model, n_heads, d_ff, depth, dropout, \
-                    seg_num = 10, factor=10):
+    """
+
+    def __init__(
+        self, win_size, d_model, n_heads, d_ff, depth, dropout, seg_num=10, factor=10
+    ):
         super().__init__()
 
-        if (win_size > 1):
+        if win_size > 1:
             self.merge_layer = SegMerging(d_model, win_size, nn.LayerNorm)
         else:
             self.merge_layer = None
@@ -194,9 +175,7 @@ class scale_block(nn.Module):
 
         for i in range(depth):
             self.encode_layers.append(
-                TwoStageAttentionLayer(
-                    seg_num, factor, d_model, n_heads, d_ff, dropout
-                )
+                TwoStageAttentionLayer(seg_num, factor, d_model, n_heads, d_ff, dropout)
             )
 
     def forward(self, x):
@@ -211,13 +190,23 @@ class scale_block(nn.Module):
         return x
 
 
-
 class Encoder(nn.Module):
-    '''
+    """
     The Encoder of Crossformer.
-    '''
-    def __init__(self, e_blocks, win_size, d_model, n_heads, d_ff, block_depth, dropout,
-                in_seg_num = 10, factor=10):
+    """
+
+    def __init__(
+        self,
+        e_blocks,
+        win_size,
+        d_model,
+        n_heads,
+        d_ff,
+        block_depth,
+        dropout,
+        in_seg_num=10,
+        factor=10,
+    ):
         super().__init__()
         self.encode_blocks = nn.ModuleList()
 
@@ -229,10 +218,14 @@ class Encoder(nn.Module):
         for i in range(1, e_blocks):
             self.encode_blocks.append(
                 scale_block(
-                    win_size, d_model, n_heads,
-                    d_ff, block_depth, dropout,
-                    math.ceil(in_seg_num/win_size**i),
-                    factor
+                    win_size,
+                    d_model,
+                    n_heads,
+                    d_ff,
+                    block_depth,
+                    dropout,
+                    math.ceil(in_seg_num / win_size**i),
+                    factor,
                 )
             )
 
@@ -419,12 +412,9 @@ class Decoder(nn.Module):
             else:
                 final_predict = final_predict + layer_predict
 
-        final_predict = final_predict.reshape(
-            batch, ts_d, out_seg_num, self.seg_len
-        )
+        final_predict = final_predict.reshape(batch, ts_d, out_seg_num, self.seg_len)
         final_predict = final_predict.permute(0, 2, 3, 1).reshape(
             batch, out_seg_num * self.seg_len, ts_d
         )
 
         return final_predict
-

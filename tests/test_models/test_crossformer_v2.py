@@ -36,9 +36,8 @@ def _make_dataframe(n_samples=120, n_groups=3, n_covariates=2, n_targets=1, seed
                 + rng.normal(0, 0.5, n_samples)
             )
         for c, col in enumerate(covar_cols):
-            df[col] = (
-                2 * np.cos(2 * np.pi * time_idx / (15 + c))
-                + rng.normal(0, 0.5, n_samples)
+            df[col] = 2 * np.cos(2 * np.pi * time_idx / (15 + c)) + rng.normal(
+                0, 0.5, n_samples
             )
         frames.append(df)
 

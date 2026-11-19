@@ -282,9 +282,7 @@ class CrossFormer(TslibBaseModel):
 
         prediction = prediction.unsqueeze(-1)
         if self.n_quantiles > 1:
-            prediction = prediction.expand(
-                *prediction.shape[:-1], self.n_quantiles
-            )
+            prediction = prediction.expand(*prediction.shape[:-1], self.n_quantiles)
 
         return prediction
 
