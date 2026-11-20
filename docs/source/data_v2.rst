@@ -48,6 +48,68 @@ Each model is optimally designed to be compatible with one or more specific Data
    :members: __init__
 
 
+Comparison with pytorch-timeseries
+----------------------------------
+
+The `pytorch-timeseries dataset API`_ exposes a numeric matrix and timestamps
+for benchmark datasets such as ETTh1. PyTorch Forecasting's ``TimeSeries``
+accepts a DataFrame with an explicit schema for series groups, targets, and
+known, unknown, and static covariates. Both projects separate the source
+data from task-specific windowing and batching.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 21 39 40
+
+   * - Design choice
+     - pytorch-timeseries
+     - PyTorch Forecasting v2
+   * - Train and evaluation splits
+     - `ForecastDataModule`_ splits observations chronologically using
+       explicit borders, dataset defaults, or ratios. Evaluation windows
+       can use history from before a split boundary. The scaler is fitted
+       on the training subset.
+     - `BaseTimeSeriesDataModule`_ assigns whole series to splits when
+       there are enough groups. A single series is used in all three
+       splits. Group-based splits measure generalization to unseen
+       series; they do not measure forecasting on held-out future
+       observations of the same series.
+   * - Windows and batches
+     - ``WindowConfig`` sets the lookback, gap before the forecast, forecast
+       length, stride, and input and target columns. The loader yields a
+       named batch with fields such as ``x`` and ``y``.
+     - ``TslibDataModule`` uses context length, prediction length, and stride
+       to create windows within each series. The datamodule provides
+       model-specific metadata and batches for Lightning.
+   * - Model contract
+     - For example, `pytorch-timeseries DLinear`_ takes a batched input
+       tensor and returns a forecast tensor in regression mode.
+     - `DLinearForecaster`_ pairs DLinear with ``TslibDataModule`` and uses
+       datamodule metadata to initialize the model. A shared architecture
+       name does not imply compatible model inputs or batch formats.
+
+The two data pipelines have different schema, split, and model contracts.
+A direct dependency would still require adapting those contracts. The most
+relevant design to carry forward is an opt-in chronological split for
+evaluating future observations of the same series. The existing
+`split-strategy proposal`_ tracks that work. Its evaluation windows should
+allow past observations as context while keeping targets within the
+evaluation partition and fitting transforms only on training data.
+
+.. _pytorch-timeseries dataset API:
+   https://github.com/wayne155/pytorch_timeseries/blob/28f0424b60cb0a69140356c63b6862f417aa315a/docs/modules/dataset.rst
+.. _ForecastDataModule:
+   https://github.com/wayne155/pytorch_timeseries/blob/28f0424b60cb0a69140356c63b6862f417aa315a/torch_timeseries/dataloader/v2/forecast.py
+.. _BaseTimeSeriesDataModule:
+   https://github.com/sktime/pytorch-forecasting/blob/570ab4047fd6537dd05cb05cf74bb973c322a4e9/pytorch_forecasting/data/data_module/base_data_module.py#L296-L317
+.. _pytorch-timeseries DLinear:
+   https://github.com/wayne155/pytorch_timeseries/blob/28f0424b60cb0a69140356c63b6862f417aa315a/torch_timeseries/model/DLinear.py
+.. _DLinearForecaster:
+   https://github.com/sktime/pytorch-forecasting/blob/570ab4047fd6537dd05cb05cf74bb973c322a4e9/pytorch_forecasting/models/dlinear/_dlinear_forecaster_v2.py
+.. _split-strategy proposal:
+   https://github.com/sktime/pytorch-forecasting/pull/2087
+
+
 API Reference
 -------------
 
