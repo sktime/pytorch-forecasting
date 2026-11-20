@@ -51,7 +51,7 @@ def test_init_basic(sample_data):
     ts = TimeSeries(data=sample_data, time="timestamp", target="target_value")
 
     assert ts.time == "timestamp"
-    assert ts.target == ["target_value"]
+    assert ts.metadata["cols"]["y"] == ["target_value"]
     assert len(ts.feature_cols) == 6  # All columns except timestamp, target_value
     assert len(ts) == 1  # Single group by default
 
@@ -193,6 +193,39 @@ def test_getitem_with_weight(sample_data):
     assert "weights" in result
     assert torch.is_tensor(result["weights"])
     assert len(result["weights"]) == 10
+
+
+def test_infer_num_cat_from_dtypes():
+    """Test the dtype split used when num and cat are not given.
+
+    Numeric columns become ``"F"`` and object/categorical ones ``"C"``, for
+    every column that is not group, time or weight."""
+    df = pd.DataFrame(
+        {
+            "time_idx": [0, 1, 2],
+            "value": [1.0, 2.0, 3.0],
+            "category": ["a", "b", "a"],
+            "target": [4.0, 5.0, 6.0],
+        }
+    )
+
+    ts = TimeSeries(data=df, time="time_idx", target="target")
+
+    assert ts.metadata["col_type"]["value"] == "F"
+    assert ts.metadata["col_type"]["target"] == "F"
+    assert ts.metadata["col_type"]["category"] == "C"
+
+
+def test_infer_num_only_when_cat_given():
+    """Test that num and cat are inferred independently.
+
+    Passing ``cat=[]`` must not suppress inference of ``num``."""
+    df = pd.DataFrame({"time_idx": [0, 1], "value": [1.0, 2.0], "target": [3.0, 4.0]})
+
+    ts = TimeSeries(data=df, time="time_idx", target="target", cat=[])
+
+    assert ts._num == ["value", "target"]
+    assert ts._cat == []
 
 
 def test_with_future_data(sample_data, future_data):
@@ -397,3 +430,17 @@ def test_group_index():
     group_indices = [int(ts[i]["group"][0]) for i in range(len(ts))]
 
     assert group_indices == list(range(len(ts)))
+
+
+def test_to_pandas_with_future_data(sample_data, future_data):
+    """Test that to_pandas appends the future frame when there is one."""
+    ts = TimeSeries(
+        data=sample_data,
+        data_future=future_data,
+        time="timestamp",
+        target="target_value",
+        group=["group_id"],
+    )
+
+    df = ts.to_pandas()
+    assert len(df) == len(sample_data) + len(future_data)

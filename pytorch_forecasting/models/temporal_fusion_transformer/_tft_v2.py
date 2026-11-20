@@ -16,11 +16,11 @@ class TFT(BaseModel):
     @classmethod
     def _pkg(cls):
         """Package containing the model."""
-        from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg_v2 import (
-            TFT_pkg_v2,
+        from pytorch_forecasting.models.temporal_fusion_transformer import (
+            TFTForecaster,
         )
 
-        return TFT_pkg_v2
+        return TFTForecaster
 
     def __init__(
         self,
