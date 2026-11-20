@@ -39,11 +39,16 @@ class TimeSeries(Dataset):
         data frame with future data.
         Column names must all be str, and contain str as referred to below.
         May contain only columns that are in time, group, weight, known, or static.
+        Must contain the ``time`` and ``group`` columns, and every ``known`` feature.
+        A series without rows in ``data_future`` has no known future.
     time : str, optional, default = first col not in group_ids, weight, target, static.
         integer typed column denoting the time index within ``data``.
         This column is used to determine the sequence of samples.
         If there are no missing observations,
         the time index should increase by ``+1`` for each subsequent sample.
+        Rows need not be sorted, they are ordered by ``time`` within each series.
+        Two rows must not share the same ``group`` and ``time``, which the data
+        modules check.
         The first time_idx for each series does not necessarily
         have to be ``0`` but any value is allowed.
     target : str or List[str], optional, default = last column (at iloc -1)
@@ -156,6 +161,7 @@ class TimeSeries(Dataset):
             for col in data.columns
             if col not in [self._time] + self._group + [self.weight] + self._target
         ]
+        self._validate_data_future()
         if self._group:
             group_arg = self._group[0] if len(self._group) == 1 else self._group
             self._groups = self.data.groupby(group_arg).groups
@@ -165,6 +171,11 @@ class TimeSeries(Dataset):
             self._group_ids = ["_single_group"]
         # create mapping from group id to index for efficient lookup
         self._group_to_idx = {gid: i for i, gid in enumerate(self._group_ids)}
+
+        self._future_groups = None
+        if self.data_future is not None and self._group:
+            future_group_arg = self._group[0] if len(self._group) == 1 else self._group
+            self._future_groups = self.data_future.groupby(future_group_arg).groups
 
         self._prepare_metadata()
 
@@ -213,6 +224,54 @@ class TimeSeries(Dataset):
             raise ValueError(
                 f"columns given as both `known` and `unknown`: {sorted(both)}."
             )
+
+    def _validate_unique_rows(self):
+        """Check that ``group`` and ``time`` identify each row of the data.
+
+        Not run on construction, as prediction frames built by
+        :meth:`from_tensors` repeat a time step forecast from several windows.
+        Called by the data modules before they build windows from the data.
+
+        Raises
+        ------
+        ValueError
+            If two rows of ``data`` or ``data_future`` share the same ``group``
+            and ``time``.
+        """
+        keys = self._group + [self._time]
+        for name, frame in (("data", self.data), ("data_future", self.data_future)):
+            if frame is None or any(key not in frame.columns for key in keys):
+                continue
+            duplicated = frame.duplicated(subset=keys, keep=False)
+            if duplicated.any():
+                examples = frame.loc[duplicated, keys].head(3).to_dict("records")
+                raise ValueError(
+                    f"`{name}` has {int(duplicated.sum())} rows that share the "
+                    f"same `group` and `time` ({keys}), e.g. {examples}. "
+                    "Each observation must be unique."
+                )
+
+    def _validate_data_future(self):
+        """Check that ``data_future`` can be merged with ``data``.
+
+        Raises
+        ------
+        ValueError
+            If ``data_future`` lacks the ``time`` or ``group`` columns, or a
+            ``known`` feature that is a feature of ``data``.
+        """
+        if self.data_future is None:
+            return
+        known_features = [col for col in self._known if col in self.feature_cols]
+        _check_column_names(
+            {
+                "time": self._time,
+                "group": self._group,
+                "known": known_features,
+            },
+            self.data_future.columns,
+            allowed_label="columns of `data_future`",
+        )
 
     def _infer_columns(self):
         """Fill in the column roles that were not passed by the user.
@@ -329,6 +388,10 @@ class TimeSeries(Dataset):
         else:
             data = self.data
 
+        # the rows of a series must be in temporal order, windows rely on it
+        if not data[time].is_monotonic_increasing:
+            data = data.sort_values(time, kind="stable")
+
         cutoff_time = data[time].max()
 
         # PyTorch wants writeable arrays
@@ -350,8 +413,8 @@ class TimeSeries(Dataset):
 
         if data_future is not None:
             if _group:
-                group_arg = _group[0] if len(_group) == 1 else _group
-                future_mask = self.data_future.groupby(group_arg).groups[group_id]
+                # a series without rows in ``data_future`` has no known future
+                future_mask = self._future_groups.get(group_id, [])
                 future_data = self.data_future.loc[future_mask]
             else:
                 future_data = self.data_future
