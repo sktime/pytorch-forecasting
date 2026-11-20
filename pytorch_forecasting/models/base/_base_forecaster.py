@@ -13,6 +13,7 @@ import yaml
 
 from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.models.base._base_object import _BasePtObject_v2
+from pytorch_forecasting.utils._validation import _check_type
 
 
 def _clone_trainer(trainer: Trainer) -> Trainer:
@@ -40,25 +41,36 @@ class BaseForecaster(_BasePtObject_v2):
     Parameters
     ----------
     trainer : lightning.Trainer, optional
-        Each ``fit`` trains on a new trainer with this configuration. Defaults
-        to ``Trainer()``.
+        A configured Lightning trainer instance. Each ``fit`` trains on a new
+        trainer with this configuration. Defaults to ``Trainer()``.
     datamodule : LightningDataModule, optional
-        A configured but data-less datamodule; ``fit`` attaches the data with
-        ``with_data``. Defaults to ``get_datamodule_cls()()``, or to the
-        ``datamodule_cfg.pkl`` saved next to ``ckpt_path`` if loading.
+        A configured, data-less instance of the class returned by
+        ``get_datamodule_cls()`` or one of its subclasses. For example, pass
+        ``TslibDataModule(context_length=8, prediction_length=2)`` to
+        ``DLinearForecaster``. The ``fit`` method attaches data with ``with_data``.
+        If omitted, the forecaster creates the datamodule with its defaults
+        or with the configuration saved next to ``ckpt_path`` when loading.
     ckpt_path : Union[str, Path], optional
         Path to the checkpoint from which to load the model. Defaults to None.
+
+    Raises
+    ------
+    TypeError
+        If ``trainer`` is supplied and is not a Lightning trainer instance, or
+        if ``datamodule`` is supplied and is not an instance of the expected
+        datamodule class.
     """
 
     def __init__(
         self,
         trainer: Trainer | None = None,
-        datamodule: Any = None,
+        datamodule: LightningDataModule | None = None,
         ckpt_path: str | Path | None = None,
     ):
         self.trainer = trainer
         self.datamodule = datamodule
         self.ckpt_path = ckpt_path
+        self._validate_trainer_and_datamodule()
         super().__init__()
 
         self._loaded_datamodule_cfg = self._load_config(
@@ -77,6 +89,32 @@ class BaseForecaster(_BasePtObject_v2):
         self._is_fitted = False
         if self.ckpt_path:
             self._build_model(metadata=self.metadata)
+
+    def _validate_trainer_and_datamodule(self, trainer: Trainer | None = None):
+        """Reject incompatible configuration before loading or building anything."""
+        effective_trainer = self.trainer if trainer is None else trainer
+        trainer_hint = "Pass a configured lightning.Trainer(...), not trainer settings."
+        if inspect.isclass(effective_trainer):
+            trainer_hint = (
+                "Instantiate lightning.Trainer(...) and pass the configured instance."
+            )
+        _check_type(
+            effective_trainer, Trainer, "trainer", allow_none=True, hint=trainer_hint
+        )
+        if self.datamodule is not None:
+            dm_cls = self.get_datamodule_cls()
+            if inspect.isclass(self.datamodule):
+                hint = (
+                    f"Pass a configured {dm_cls.__name__}(...) instance, "
+                    f"not the class {self.datamodule.__name__}."
+                )
+            else:
+                hint = (
+                    f"{type(self).__name__} requires an instance of "
+                    f"{type(self).__name__}.get_datamodule_cls() "
+                    f"({dm_cls.__name__})."
+                )
+            _check_type(self.datamodule, dm_cls, "datamodule", hint=hint)
 
     @staticmethod
     def _load_config(
@@ -316,9 +354,10 @@ class BaseForecaster(_BasePtObject_v2):
             The data to fit on. The datamodule splits it into training and
             validation data.
         trainer : lightning.Trainer, optional
-            Used as-is for this call instead of a copy of the one given to
-            ``__init__``. A trainer whose fit loop has already finished will
-            not train again.
+            A configured Lightning trainer instance, used as-is for this call.
+            If omitted, use a copy of the constructor trainer or create a default
+            trainer. A trainer whose fit loop has already finished will not train
+            again.
         save_ckpt : bool, default=True
             If True, save the best model checkpoint and the `datamodule_cfg`.
         ckpt_dir : Union[str, Path], default="checkpoints"
@@ -332,7 +371,14 @@ class BaseForecaster(_BasePtObject_v2):
         -------
         Optional[Path]
             The path to the best model checkpoint if `save_ckpt=True`, else None.
+
+        Raises
+        ------
+        TypeError
+            If the selected trainer is not a Lightning trainer instance, or
+            if the stored datamodule is not an instance of the expected class.
         """
+        self._validate_trainer_and_datamodule(trainer)
         self.datamodule_ = self._build_datamodule(data)
 
         # the model is built only here, because only now are its input
