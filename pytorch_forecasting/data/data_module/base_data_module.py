@@ -159,6 +159,7 @@ class BaseTimeSeriesDataModule(LightningDataModule):
 
         Subclasses extend via ``super()`` for checks that need the schema.
         """
+        self.time_series._validate_unique_rows()
         self.time_series_metadata = self.time_series.get_metadata()
         self.n_targets = len(self.time_series_metadata["cols"]["y"])
         self.categorical_indices, self.continuous_indices = (
