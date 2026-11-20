@@ -317,3 +317,50 @@ def test_tft_cross_entropy_on_discrete_target(tmp_path):
     pred = pkg.predict(datasets["validation_dataset"], mode="raw")
     assert pred["prediction"].ndim == 3
     assert pred["prediction"].shape[-1] == n_classes
+
+
+@pytest.mark.parametrize(
+    "loss_fn",
+    [nn.MSELoss(reduction="sum"), nn.KLDivLoss(reduction="batchmean")],
+    ids=["sum", "batchmean"],
+)
+def test_nn_loss_adapter_rejects_unsupported_reduction(loss_fn):
+    """A reduction the adapter cannot reproduce must not silently become a mean."""
+    with pytest.raises(ValueError, match="does not support reduction"):
+        NNLossAdapter(loss_fn)
+
+
+def test_nn_loss_adapter_explicit_reduction_overrides_loss_reduction():
+    """Passing ``reduction`` explicitly decides the reduction of the adapter."""
+    adapter = NNLossAdapter(nn.MSELoss(reduction="sum"), reduction="mean")
+    y_pred, target = torch.randn(4, 5, 1), torch.randn(4, 5)
+    adapter.update(y_pred, target)
+    expected = nn.MSELoss()(y_pred.squeeze(-1), target)
+    torch.testing.assert_close(adapter.compute(), expected)
+
+
+@pytest.mark.parametrize(
+    "loss_fn, match",
+    [
+        (nn.CrossEntropyLoss(weight=torch.tensor([1.0, 2.0, 3.0])), "class `weight`"),
+        (nn.NLLLoss(weight=torch.tensor([1.0, 2.0, 3.0])), "class `weight`"),
+        (nn.CrossEntropyLoss(ignore_index=2), "ignore_index"),
+        (nn.NLLLoss(ignore_index=0), "ignore_index"),
+    ],
+    ids=["ce-weight", "nll-weight", "ce-ignore", "nll-ignore"],
+)
+def test_nn_loss_adapter_rejects_unsupported_class_loss_options(loss_fn, match):
+    """Class weights and ``ignore_index`` change the mean of the torch loss."""
+    with pytest.raises(ValueError, match=match):
+        NNLossAdapter(loss_fn)
+
+
+def test_nn_loss_adapter_class_loss_matches_torch_loss():
+    """Supported class losses reproduce the value of the wrapped torch loss."""
+    logits = torch.randn(4, 5, 3)
+    target = torch.randint(0, 3, (4, 5))
+    for loss_fn in (nn.CrossEntropyLoss(), nn.CrossEntropyLoss(label_smoothing=0.1)):
+        adapter = NNLossAdapter(loss_fn)
+        adapter.update(logits, target.float())
+        expected = loss_fn(logits.reshape(-1, 3), target.reshape(-1))
+        torch.testing.assert_close(adapter.compute(), expected)

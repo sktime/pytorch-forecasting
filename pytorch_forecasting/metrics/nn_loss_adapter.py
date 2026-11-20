@@ -44,6 +44,7 @@ class NNLossAdapter(MultiHorizonMetric):
 
     def __init__(self, loss: nn.Module, **kwargs):
         nn_reduction = getattr(loss, "reduction", "mean")
+        self._check_supported(loss, explicit_reduction="reduction" in kwargs)
         # MultiHorizonMetric reductions: mean | none | sqrt-mean
         if "reduction" not in kwargs:
             kwargs["reduction"] = "none" if nn_reduction == "none" else "mean"
@@ -56,6 +57,51 @@ class NNLossAdapter(MultiHorizonMetric):
         if hasattr(self._loss, "reduction"):
             self._loss.reduction = "none"
         self._mode = self._infer_mode(self._loss)
+
+    @staticmethod
+    def _check_supported(loss: nn.Module, explicit_reduction: bool) -> None:
+        """Reject settings of ``loss`` whose result the adapter would change.
+
+        The adapter computes the loss per element and averages it over all time
+        steps, like every :class:`~pytorch_forecasting.metrics.MultiHorizonMetric`.
+        This differs from the wrapped loss for the settings checked here, so they
+        are refused instead of silently returning another value.
+
+        Parameters
+        ----------
+        loss :
+            Wrapped ``torch.nn`` loss module.
+        explicit_reduction :
+            Whether the caller passed ``reduction`` to the adapter, which then
+            decides the reduction instead of ``loss.reduction``.
+
+        Raises
+        ------
+        ValueError
+            If ``loss.reduction`` is neither ``"mean"`` nor ``"none"`` and no
+            ``reduction`` was passed, or if a classification loss uses class
+            ``weight`` or a non-default ``ignore_index``.
+        """
+        nn_reduction = getattr(loss, "reduction", "mean")
+        if not explicit_reduction and nn_reduction not in ("mean", "none"):
+            raise ValueError(
+                f"NNLossAdapter does not support reduction={nn_reduction!r} of "
+                f"{type(loss).__name__}, it only reproduces 'mean' and 'none'. "
+                "Use one of those, or pass `reduction` to NNLossAdapter explicitly."
+            )
+        if isinstance(loss, _CLASS_LOSSES):
+            if getattr(loss, "weight", None) is not None:
+                raise ValueError(
+                    f"NNLossAdapter does not support class `weight` of "
+                    f"{type(loss).__name__}: the mean would not be normalised by "
+                    "the class weights as in the torch loss."
+                )
+            if getattr(loss, "ignore_index", -100) != -100:
+                raise ValueError(
+                    f"NNLossAdapter does not support `ignore_index` of "
+                    f"{type(loss).__name__}: ignored positions would still count "
+                    "in the mean, unlike in the torch loss."
+                )
 
     @staticmethod
     def _infer_mode(loss: nn.Module) -> _Mode:
@@ -199,7 +245,7 @@ class NNLossAdapter(MultiHorizonMetric):
                 return y_pred, target
             elif y_pred.size(-1) != 1:
                 raise ValueError(
-                    "Error inNNLossAdapter for point prediction (H=1): "
+                    "Error in NNLossAdapter for point prediction (H=1): "
                     f"Got y_pred shape {list(y_pred.shape)} with "
                     f"H={y_pred.size(-1)}. "
                     "For multi-output / multi-target heads use MultiLoss "
