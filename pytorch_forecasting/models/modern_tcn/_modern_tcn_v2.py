@@ -64,11 +64,11 @@ class ModernTCN(BaseModel):
     @classmethod
     def _pkg(cls):
         """Return the package class for this model."""
-        from pytorch_forecasting.models.modern_tcn._modern_tcn_pkg_v2 import (
-            ModernTCN_pkg_v2,
+        from pytorch_forecasting.models.modern_tcn._modern_tcn_forecaster_v2 import (
+            ModernTCNForecaster,
         )
 
-        return ModernTCN_pkg_v2
+        return ModernTCNForecaster
 
     def __init__(
         self,

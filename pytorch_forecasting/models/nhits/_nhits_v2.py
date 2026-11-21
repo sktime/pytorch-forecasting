@@ -87,16 +87,18 @@ class NHiTS_v2(BaseModel):
 
     @classmethod
     def _pkg(cls):
-        """Return the package class for this model.
+        """Return the forecaster class for this model.
 
         Returns
         -------
-        NHiTS_pkg_v2 : type
-            Package class associated with this model.
+        NHiTSForecaster : type
+            Forecaster class associated with this model.
         """
-        from pytorch_forecasting.models.nhits._nhits_pkg_v2 import NHiTS_pkg_v2
+        from pytorch_forecasting.models.nhits._nhits_forecaster_v2 import (
+            NHiTSForecaster,
+        )
 
-        return NHiTS_pkg_v2
+        return NHiTSForecaster
 
     def __init__(
         self,
