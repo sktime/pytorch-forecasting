@@ -1,5 +1,4 @@
 import torch
-import torch.nn as nn
 
 from pytorch_forecasting.metrics import MAE
 from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
