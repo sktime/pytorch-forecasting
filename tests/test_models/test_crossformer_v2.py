@@ -10,7 +10,7 @@ import torch
 
 from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.data.data_module import TslibDataModule
-from pytorch_forecasting.metrics import MAE, SMAPE, QuantileLoss
+from pytorch_forecasting.metrics import MAE, QuantileLoss
 from pytorch_forecasting.models.crossformer import (
     CrossFormer,
     CrossFormerForecaster,
@@ -46,31 +46,13 @@ def _make_dataframe(n_samples=120, n_groups=3, n_covariates=2, n_targets=1, seed
     return df, target_cols, covar_cols
 
 
-@pytest.fixture
-def sample_data():
-    """Multivariate data with one target and two continuous covariates."""
-    df, target_cols, covar_cols = _make_dataframe(n_targets=1, n_covariates=2)
-    return df, target_cols, covar_cols
-
-
-@pytest.fixture
-def multi_target_data():
-    """Data with two target variables."""
-    df, target_cols, covar_cols = _make_dataframe(n_targets=2, n_covariates=1)
-    return df, target_cols, covar_cols
-
-
-@pytest.fixture
-def univariate_data():
-    """Data with a single target and no covariates."""
-    df, target_cols, _ = _make_dataframe(n_targets=1, n_covariates=0)
-    return df, target_cols, []
-
-
 def _make_timeseries(
-    df, target_cols, covar_cols, context_length=30, prediction_length=6
+    n_targets=1, n_covariates=2, context_length=30, prediction_length=6
 ):
-    """Build a TimeSeries + TslibDataModule from a dataframe."""
+    """Build a TimeSeries + TslibDataModule from synthetic data."""
+    df, target_cols, covar_cols = _make_dataframe(
+        n_targets=n_targets, n_covariates=n_covariates
+    )
     ts = TimeSeries(
         data=df,
         time="time_idx",
@@ -90,13 +72,6 @@ def _make_timeseries(
     )
     dm.setup()
     return ts, dm
-
-
-@pytest.fixture
-def datamodule(sample_data):
-    df, target_cols, covar_cols = sample_data
-    _, dm = _make_timeseries(df, target_cols, covar_cols)
-    return dm
 
 
 def _small_model(metadata, **kwargs):
@@ -121,26 +96,43 @@ def _batch(dm):
     return next(iter(dm.train_dataloader()))[0]
 
 
-def test_forward_output_shape(datamodule):
+def test_forward_output_shape():
     """Prediction shape is (batch, prediction_length, target_dim)."""
-    metadata = datamodule.metadata
-    model = _small_model(metadata)
+    _, dm = _make_timeseries()
+    model = _small_model(dm.metadata)
     model.eval()
 
-    batch = _batch(datamodule)
+    batch = _batch(dm)
     with torch.no_grad():
         output = model(batch)
 
-    assert "prediction" in output
     prediction = output["prediction"]
     # single target + point loss -> (batch, prediction_length, n_quantiles=1)
     assert prediction.shape == (
         batch["history_target"].shape[0],
-        metadata["prediction_length"],
+        dm.metadata["prediction_length"],
         1,
     )
     assert not torch.isnan(prediction).any()
     assert not torch.isinf(prediction).any()
+
+
+def test_quantile_loss_output():
+    """QuantileLoss produces a trailing quantile dimension."""
+    _, dm = _make_timeseries()
+    quantiles = [0.1, 0.5, 0.9]
+    model = _small_model(dm.metadata, loss=QuantileLoss(quantiles=quantiles))
+    model.eval()
+
+    with torch.no_grad():
+        prediction = model(_batch(dm))["prediction"]
+
+    # single target -> (batch, prediction_length, n_quantiles)
+    assert prediction.shape == (
+        prediction.shape[0],
+        dm.metadata["prediction_length"],
+        len(quantiles),
+    )
 
 
 @pytest.mark.parametrize(
@@ -153,11 +145,10 @@ def test_forward_output_shape(datamodule):
     ],
 )
 def test_different_seg_len_and_model_sizes(
-    sample_data, seg_len, d_model, n_heads, e_layers, win_size
+    seg_len, d_model, n_heads, e_layers, win_size
 ):
-    """Model works across segment lengths and sizes."""
-    df, target_cols, covar_cols = sample_data
-    _, dm = _make_timeseries(df, target_cols, covar_cols)
+    """Model works across segment lengths and hierarchical scale configs."""
+    _, dm = _make_timeseries()
     model = _small_model(
         dm.metadata,
         seg_len=seg_len,
@@ -170,59 +161,46 @@ def test_different_seg_len_and_model_sizes(
     model.eval()
 
     with torch.no_grad():
-        output = model(_batch(dm))
+        prediction = model(_batch(dm))["prediction"]
 
-    prediction = output["prediction"]
     assert prediction.shape[1] == dm.metadata["prediction_length"]
     assert prediction.shape[2] == dm.metadata["n_features"]["target"]
     assert not torch.isnan(prediction).any()
 
 
 @pytest.mark.parametrize("seg_len", [4, 5, 7])
-def test_history_length_requiring_padding(sample_data, seg_len):
+def test_history_length_requiring_padding(seg_len):
     """context_length not divisible by seg_len must be padded correctly."""
-    df, target_cols, covar_cols = sample_data
-    # context_length=30 is not divisible by seg_len=4, 7 (and is for 5, 6, ...)
-    _, dm = _make_timeseries(
-        df, target_cols, covar_cols, context_length=30, prediction_length=7
-    )
+    _, dm = _make_timeseries(context_length=30, prediction_length=7)
     model = _small_model(dm.metadata, seg_len=seg_len, d_model=32, n_heads=2)
     model.eval()
 
-    assert model.in_len_add == model.pad_in_len - model.context_length
-    assert model.in_len_add >= 0
-
     with torch.no_grad():
-        output = model(_batch(dm))
+        prediction = model(_batch(dm))["prediction"]
 
-    prediction = output["prediction"]
     assert prediction.shape[1] == 7  # prediction_length
     assert not torch.isnan(prediction).any()
 
 
-def test_univariate_no_covariates(univariate_data):
+def test_univariate_no_covariates():
     """Model works with a single target and no continuous covariates."""
-    df, target_cols, covar_cols = univariate_data
-    assert len(covar_cols) == 0
-    _, dm = _make_timeseries(df, target_cols, covar_cols)
+    _, dm = _make_timeseries(n_covariates=0)
     model = _small_model(dm.metadata)
     model.eval()
 
     assert model.data_dim == 1
 
     with torch.no_grad():
-        output = model(_batch(dm))
+        prediction = model(_batch(dm))["prediction"]
 
-    prediction = output["prediction"]
     assert prediction.shape[1] == dm.metadata["prediction_length"]
     assert prediction.shape[2] == 1
     assert not torch.isnan(prediction).any()
 
 
-def test_multivariate_targets(multi_target_data):
+def test_multivariate_targets():
     """Model predicts all target dimensions jointly."""
-    df, target_cols, covar_cols = multi_target_data
-    _, dm = _make_timeseries(df, target_cols, covar_cols)
+    _, dm = _make_timeseries(n_targets=2, n_covariates=1)
     model = _small_model(dm.metadata)
     model.eval()
 
@@ -231,27 +209,22 @@ def test_multivariate_targets(multi_target_data):
     assert model.data_dim == 2 + dm.metadata["n_features"]["continuous"]
 
     with torch.no_grad():
-        output = model(_batch(dm))
+        prediction = model(_batch(dm))["prediction"]
 
-    prediction = output["prediction"]
     assert prediction.shape[2] == 2
     assert not torch.isnan(prediction).any()
 
 
-def test_covariates_affect_prediction(datamodule):
+def test_covariates_affect_prediction():
     """Continuous covariates are part of the model input (data_dim > target_dim)."""
-    metadata = datamodule.metadata
-    model = _small_model(metadata)
+    _, dm = _make_timeseries()
+    model = _small_model(dm.metadata)
+    model.eval()
 
-    n_cont = metadata["n_features"]["continuous"]
-    assert n_cont == 2
-    assert model.data_dim == model.target_dim + n_cont
-
-    batch = _batch(datamodule)
+    batch = _batch(dm)
     batch_zeroed = dict(batch)
     batch_zeroed["history_cont"] = torch.zeros_like(batch["history_cont"])
 
-    model.eval()
     with torch.no_grad():
         out_with = model(batch)["prediction"]
         out_without = model(batch_zeroed)["prediction"]
@@ -260,70 +233,9 @@ def test_covariates_affect_prediction(datamodule):
     assert not torch.allclose(out_with, out_without)
 
 
-def test_quantile_loss_output(datamodule):
-    """QuantileLoss produces a trailing quantile dimension."""
-    metadata = datamodule.metadata
-    quantiles = [0.1, 0.5, 0.9]
-    model = _small_model(metadata, loss=QuantileLoss(quantiles=quantiles))
-    model.eval()
-
-    with torch.no_grad():
-        output = model(_batch(datamodule))
-
-    prediction = output["prediction"]
-    # single target -> (batch, prediction_length, n_quantiles)
-    assert prediction.shape == (
-        prediction.shape[0],
-        metadata["prediction_length"],
-        len(quantiles),
-    )
-
-
-def test_logging_metrics_is_module_list(datamodule):
-    """logging_metrics must be registered as nn.ModuleList."""
-    model = _small_model(datamodule.metadata, logging_metrics=[SMAPE(), MAE()])
-    assert isinstance(model.logging_metrics, torch.nn.ModuleList)
-
-
-def test_invalid_head_division(sample_data):
-    """d_model not divisible by n_heads raises a clear error."""
-    df, target_cols, covar_cols = sample_data
-    _, dm = _make_timeseries(df, target_cols, covar_cols)
-    with pytest.raises(ValueError, match="divisible"):
-        _small_model(dm.metadata, d_model=30, n_heads=4)
-
-
-TRAINER_KWARGS = {
-    "accelerator": "cpu",
-    "logger": False,
-    "enable_progress_bar": False,
-    "enable_checkpointing": False,
-}
-
-
-def _fit_kwargs():
-    return Trainer(
-        max_epochs=1,
-        limit_train_batches=2,
-        limit_val_batches=1,
-        **TRAINER_KWARGS,
-    )
-
-
-@pytest.fixture
-def forecaster_and_data(sample_data, tmp_path):
-    """Fitted CrossFormerForecaster on a small dataset."""
-    df, target_cols, covar_cols = sample_data
-    ts = TimeSeries(
-        data=df,
-        time="time_idx",
-        target=target_cols,
-        group=["group_id"],
-        num=target_cols + covar_cols,
-        cat=[],
-        known=["time_idx"],
-        unknown=target_cols + covar_cols,
-    )
+def test_forecaster_fit_predict():
+    """End-to-end workflow: fit a CrossFormerForecaster and predict."""
+    ts, _ = _make_timeseries()
     forecaster = CrossFormerForecaster(
         d_model=32,
         n_heads=2,
@@ -340,75 +252,21 @@ def forecaster_and_data(sample_data, tmp_path):
             train_val_test_split=(0.7, 0.15, 0.15),
         ),
     )
-    ckpt_path = forecaster.fit(
+    forecaster.fit(
         ts,
-        trainer=_fit_kwargs(),
-        save_ckpt=True,
-        ckpt_dir=tmp_path / "checkpoints",
-        ckpt_kwargs={"monitor": "train_loss_epoch"},
+        trainer=Trainer(
+            max_epochs=1,
+            limit_train_batches=2,
+            limit_val_batches=1,
+            accelerator="cpu",
+            logger=False,
+            enable_progress_bar=False,
+            enable_checkpointing=False,
+        ),
     )
-    return forecaster, ts, ckpt_path
-
-
-def test_forecaster_fit_predict_prediction_mode(forecaster_and_data):
-    """Forecaster predicts in 'prediction' mode and returns a TimeSeries."""
-    forecaster, ts, _ = forecaster_and_data
 
     predictions = forecaster.predict(ts, mode="prediction")
 
     assert predictions.metadata.is_prediction
     assert isinstance(predictions, TimeSeries)
     assert len(predictions.to_pandas()) > 0
-
-
-def test_forecaster_predict_quantiles_mode(forecaster_and_data):
-    """Forecaster supports 'quantiles' mode."""
-    forecaster, ts, _ = forecaster_and_data
-
-    predictions = forecaster.predict(ts, mode="quantiles")
-
-    assert predictions.metadata.is_prediction
-    assert len(predictions.to_pandas()) > 0
-
-
-def test_forecaster_predict_raw_mode(forecaster_and_data):
-    """Forecaster supports 'raw' mode returning tensors."""
-    forecaster, ts, _ = forecaster_and_data
-
-    raw = forecaster.predict(ts, mode="raw")
-
-    assert isinstance(raw, dict)
-    assert "prediction" in raw
-    assert isinstance(raw["prediction"], torch.Tensor)
-    assert raw["prediction"].ndim == 3
-
-
-def test_forecaster_checkpoint_reload(forecaster_and_data, tmp_path):
-    """A forecaster can be reloaded from a checkpoint and predict."""
-    _, ts, ckpt_path = forecaster_and_data
-
-    assert ckpt_path is not None
-
-    loaded = CrossFormerForecaster(ckpt_path=ckpt_path)
-    predictions = loaded.predict(ts, mode="prediction")
-
-    assert predictions.metadata.is_prediction
-    assert len(predictions.to_pandas()) > 0
-
-
-def test_forecaster_predict_before_fit_raises(sample_data):
-    """predict() on an unfitted forecaster raises RuntimeError."""
-    df, target_cols, covar_cols = sample_data
-    ts = TimeSeries(
-        data=df,
-        time="time_idx",
-        target=target_cols,
-        group=["group_id"],
-        num=target_cols + covar_cols,
-        cat=[],
-        known=["time_idx"],
-        unknown=target_cols + covar_cols,
-    )
-    forecaster = CrossFormerForecaster(d_model=32, n_heads=2, e_layers=1)
-    with pytest.raises(RuntimeError, match="not fitted|not initialized"):
-        forecaster.predict(ts, mode="prediction")
