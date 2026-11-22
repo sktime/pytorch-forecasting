@@ -19,13 +19,13 @@ import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 
+from pytorch_forecasting.layers import (
+    CrossFormerDecoder,
+    CrossFormerDSWEmbedding,
+    CrossFormerEncoder,
+)
 from pytorch_forecasting.metrics import Metric
 from pytorch_forecasting.models.base._tslib_base_model_v2 import TslibBaseModel
-from pytorch_forecasting.models.crossformer.sub_modules import (
-    Decoder,
-    DSW_embedding,
-    Encoder,
-)
 
 
 class CrossFormer(TslibBaseModel):
@@ -125,7 +125,6 @@ class CrossFormer(TslibBaseModel):
             metadata=metadata,
         )
 
-
         self.seg_len = seg_len
         self.win_size = win_size
         self.factor = factor
@@ -168,13 +167,13 @@ class CrossFormer(TslibBaseModel):
         in_seg_num = self.pad_in_len // self.seg_len
         out_seg_num = self.pad_out_len // self.seg_len
 
-        self.enc_value_embedding = DSW_embedding(self.seg_len, self.d_model)
+        self.enc_value_embedding = CrossFormerDSWEmbedding(self.seg_len, self.d_model)
         self.enc_pos_embedding = nn.Parameter(
             torch.randn(1, self.data_dim, in_seg_num, self.d_model)
         )
         self.pre_norm = nn.LayerNorm(self.d_model)
 
-        self.encoder = Encoder(
+        self.encoder = CrossFormerEncoder(
             self.e_layers,
             self.win_size,
             self.d_model,
@@ -189,7 +188,7 @@ class CrossFormer(TslibBaseModel):
         self.dec_pos_embedding = nn.Parameter(
             torch.randn(1, self.data_dim, out_seg_num, self.d_model)
         )
-        self.decoder = Decoder(
+        self.decoder = CrossFormerDecoder(
             self.seg_len,
             self.e_layers + 1,
             self.d_model,

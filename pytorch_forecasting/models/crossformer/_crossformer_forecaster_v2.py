@@ -60,7 +60,7 @@ class CrossFormerForecaster(BaseForecaster):
     _tags = {
         "info:name": "CrossFormer",
         "info:compute": 3,
-        "authors": ["Yunhao Zhang", "Junchi Yan"],
+        "authors": ["Raman Bansal", "Yunhao Zhang", "Junchi Yan"],
         "info:y_type": ["numeric"],
         "capability:exogenous": True,
         "capability:multivariate": True,
