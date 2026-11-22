@@ -125,11 +125,14 @@ class NBeatsXForecaster(BaseForecaster):
 
     def get_model_params(self):
         """Return parameters for the Lightning model."""
-        return {
+        params = {
             name: value
             for name, value in self.get_params(deep=False).items()
             if name not in {"trainer", "datamodule", "ckpt_path"}
         }
+        if self.datamodule_ is not None:
+            params["schema"] = dict(self.datamodule_.time_series_metadata)
+        return params
 
     @classmethod
     def get_test_train_params(cls):

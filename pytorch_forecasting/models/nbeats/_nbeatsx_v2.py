@@ -24,7 +24,9 @@ class NBeatsX_v2(BaseModel):
 
     See :class:`~pytorch_forecasting.models.nbeats.NBeatsXForecaster` for model
     parameters. Pass the fitted data pipeline's ``metadata`` when constructing
-    this model directly. Forecasts and backcasts use normalized target space.
+    this model directly. Pass the original column schema as ``schema`` for target
+    validation and exogenous stacks. Forecasts and backcasts use normalized
+    target space.
     """
 
     @classmethod
@@ -51,10 +53,35 @@ class NBeatsX_v2(BaseModel):
         lr_scheduler: str | None = None,
         lr_scheduler_params: dict | None = None,
         metadata=None,
+        schema=None,
     ):
         if metadata is None:
             raise ValueError("NBeatsX_v2 requires encoder-decoder datamodule metadata")
-        if metadata["target"] != 1 or metadata.get("target_is_categorical", False):
+        # Older checkpoints stored these model inputs on the datamodule metadata.
+        legacy = metadata if isinstance(metadata, dict) else vars(metadata)
+        categorical = legacy.get("target_is_categorical", False)
+        self.known_cont_indices = legacy.get("known_cont_indices", ())
+        self.known_cat_indices = legacy.get("known_cat_indices", ())
+        if schema is not None:
+            categorical = any(
+                schema["col_type"][col] == "C" for col in schema["cols"]["y"]
+            )
+
+            def known_indices(kind):
+                columns = (
+                    col
+                    for col in schema["cols"]["x"]
+                    if schema["col_type"][col] == kind
+                )
+                return [
+                    i
+                    for i, col in enumerate(columns)
+                    if schema["col_known"][col] == "K"
+                ]
+
+            self.known_cont_indices = known_indices("F")
+            self.known_cat_indices = known_indices("C")
+        if metadata["target"] != 1 or categorical:
             raise ValueError("NBeatsX requires a single continuous target")
         self.context_length = metadata["max_encoder_length"]
         self.prediction_length = metadata["max_prediction_length"]
@@ -96,8 +123,8 @@ class NBeatsX_v2(BaseModel):
         )
         if "exogenous" in stack_types and (
             not decoder_size
-            or len(metadata.get("known_cont_indices", ())) != metadata["decoder_cont"]
-            or len(metadata.get("known_cat_indices", ())) != metadata["decoder_cat"]
+            or len(self.known_cont_indices) != metadata["decoder_cont"]
+            or len(self.known_cat_indices) != metadata["decoder_cat"]
         ):
             raise ValueError("Exogenous stacks require known temporal covariates")
         input_size = (
@@ -129,8 +156,8 @@ class NBeatsX_v2(BaseModel):
         if "exogenous" in self.hparams.stack_types:
             encoder_basis = torch.cat(
                 [
-                    x["encoder_cont"][..., self.metadata["known_cont_indices"]],
-                    x["encoder_cat"][..., self.metadata["known_cat_indices"]],
+                    x["encoder_cont"][..., self.known_cont_indices],
+                    x["encoder_cat"][..., self.known_cat_indices],
                 ],
                 dim=-1,
             )

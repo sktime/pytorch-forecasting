@@ -53,7 +53,6 @@ See the API documentation for further details on available models:
     models.mlp.DecoderMLP
     models.nbeats.NBeats
     models.nbeats.NBeatsKAN
-    models.nbeats.NBeatsX
     models.nhits.NHiTS
     models.rnn.RecurrentNetwork
     models.temporal_fusion_transformer.TemporalFusionTransformer

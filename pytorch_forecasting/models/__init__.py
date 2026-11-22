@@ -16,7 +16,6 @@ from pytorch_forecasting.models.modern_tcn import ModernTCN
 from pytorch_forecasting.models.nbeats import (
     NBeats,
     NBeatsKAN,
-    NBeatsX,
     NBeatsXForecaster,
 )
 from pytorch_forecasting.models.nhits import NHiTS
@@ -41,7 +40,6 @@ from pytorch_forecasting.models.xlstm import xLSTMTime
 __all__ = [
     "NBeats",
     "NBeatsKAN",
-    "NBeatsX",
     "NBeatsXForecaster",
     "NHiTS",
     "PatchTST",

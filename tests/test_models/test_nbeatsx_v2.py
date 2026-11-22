@@ -38,7 +38,7 @@ def data():
     )
 
 
-def test_forecaster_exogenous_fit_predict(data):
+def test_forecaster_exogenous_fit_predict(data, tmp_path):
     model = NBeatsXForecaster(
         stack_types=["exogenous"],
         widths=[8],
@@ -57,11 +57,11 @@ def test_forecaster_exogenous_fit_predict(data):
             limit_val_batches=1,
             accelerator="cpu",
             logger=False,
-            enable_checkpointing=False,
+            enable_checkpointing=True,
             enable_progress_bar=False,
         ),
     )
-    model.fit(data, save_ckpt=False)
+    checkpoint = model.fit(data, ckpt_dir=tmp_path)
     assert "train_MASE" in model.trainer_.callback_metrics
     assert "val_MASE" in model.trainer_.callback_metrics
     prediction = model.predict(data, return_info=["x"])
@@ -70,6 +70,11 @@ def test_forecaster_exogenous_fit_predict(data):
     assert np.isfinite(prediction.to_pandas()["value"]).all()
 
     x = prediction.info["x"]
+    restored = NBeatsXForecaster(ckpt_path=checkpoint)
+    with torch.no_grad():
+        torch.testing.assert_close(
+            restored.model.eval()(x)["prediction"], model.model.eval()(x)["prediction"]
+        )
     block = model.model.net_blocks[0]
     with torch.no_grad():
         block.theta_b_fc.weight.zero_()
@@ -139,7 +144,6 @@ def test_future_prediction_uses_only_observed_encoder(data):
     ("metadata_change", "match"),
     [
         ({"target": 2}, "single continuous target"),
-        ({"target_is_categorical": True}, "single continuous target"),
         ({"min_encoder_length": 2}, "fixed encoder and prediction"),
     ],
 )
@@ -149,3 +153,11 @@ def test_forecaster_validates_metadata(data, metadata_change, match):
     metadata.update(metadata_change)
     with pytest.raises(ValueError, match=match):
         NBeatsXForecaster.get_cls()(metadata=metadata)
+
+
+def test_forecaster_rejects_categorical_target(data):
+    datamodule = EncoderDecoderTimeSeriesDataModule(time_series=data)
+    schema = dict(datamodule.time_series_metadata)
+    schema["col_type"] = {**schema["col_type"], "value": "C"}
+    with pytest.raises(ValueError, match="single continuous target"):
+        NBeatsXForecaster.get_cls()(metadata=datamodule.metadata, schema=schema)

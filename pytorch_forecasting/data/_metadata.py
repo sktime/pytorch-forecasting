@@ -91,10 +91,6 @@ class EncDecDataModuleMetadata(_DictLike):
         Minimum encoder length.
     min_prediction_length : int, default=0
         Minimum prediction length.
-    known_cat_indices, known_cont_indices : tuple of int
-        Encoder feature positions in decoder column order, by feature type.
-    target_is_categorical : bool, default=False
-        Whether any target column is categorical.
     """
 
     encoder_cat: int
@@ -108,9 +104,6 @@ class EncDecDataModuleMetadata(_DictLike):
     max_prediction_length: int = 0
     min_encoder_length: int = 0
     min_prediction_length: int = 0
-    known_cat_indices: tuple[int, ...] = ()
-    known_cont_indices: tuple[int, ...] = ()
-    target_is_categorical: bool = False
 
 
 @dataclass(frozen=True)

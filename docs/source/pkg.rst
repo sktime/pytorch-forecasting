@@ -51,7 +51,6 @@ See the detailed API documentation for the V1 Package classes below:
    models.mlp._decodermlp_pkg.DecoderMLP_pkg
    models.nbeats._nbeats_pkg.NBeats_pkg
    models.nbeats._nbeatskan_pkg.NBeatsKAN_pkg
-   models.nbeats._nbeatsx_pkg.NBeatsX_pkg
    models.nhits._nhits_pkg.NHiTS_pkg
    models.rnn._rnn_pkg.RecurrentNetwork_pkg
    models.temporal_fusion_transformer._tft_pkg.TemporalFusionTransformer_pkg
