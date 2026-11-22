@@ -2,6 +2,7 @@ import inspect
 from pathlib import Path
 import pickle
 from typing import Any
+import warnings
 
 from lightning import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint, ModelSummary
@@ -331,7 +332,8 @@ class BaseForecaster(_BasePtObject_v2):
         Returns
         -------
         Optional[Path]
-            The path to the best model checkpoint if `save_ckpt=True`, else None.
+            The path to the best model checkpoint if `save_ckpt=True` and a
+            checkpoint was written, else None.
         """
         self.datamodule_ = self._build_datamodule(data)
 
@@ -360,6 +362,17 @@ class BaseForecaster(_BasePtObject_v2):
         self.trainer_.fit(self.model, datamodule=self.datamodule_, **trainer_fit_kwargs)
         self._is_fitted = True
         if save_ckpt and checkpoint_cb:
+            if not checkpoint_cb.best_model_path:
+                # nothing was checkpointed, e.g. ``fast_dev_run`` or no validation
+                # batches; an empty path would resolve to the working directory
+                warnings.warn(
+                    "`save_ckpt=True` but no checkpoint was written during `fit`, "
+                    "e.g. because of `fast_dev_run=True` or because no `val_loss` "
+                    "was logged. Artifacts were not saved.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+                return None
             best_model_path = Path(checkpoint_cb.best_model_path)
             self._save_artifact(best_model_path.parent)
             print(f"Artifacts saved in: {best_model_path.parent}")
