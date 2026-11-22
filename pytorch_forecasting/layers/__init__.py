@@ -12,6 +12,15 @@ from pytorch_forecasting.layers._blocks import (
     ResidualBlock,
     TransformerBlock,
 )
+from pytorch_forecasting.layers._crossformer import (
+    CrossFormerDecoder,
+    CrossFormerDecoderLayer,
+    CrossFormerDSWEmbedding,
+    CrossFormerEncoder,
+    CrossFormerScaleBlock,
+    CrossFormerSegmentMerger,
+    CrossFormerTwoStageAttention,
+)
 from pytorch_forecasting.layers._decomposition import SeriesDecomposition
 from pytorch_forecasting.layers._embeddings import (
     DataEmbedding_inverted,
@@ -65,6 +74,13 @@ __all__ = [
     "SeriesDecomposition",
     "RevIN",
     "ResidualBlock",
+    "CrossFormerDSWEmbedding",
+    "CrossFormerTwoStageAttention",
+    "CrossFormerSegmentMerger",
+    "CrossFormerScaleBlock",
+    "CrossFormerEncoder",
+    "CrossFormerDecoderLayer",
+    "CrossFormerDecoder",
     "embedding_cat_variables",
     "FreTSCore",
     "FullyConnectedModule",
