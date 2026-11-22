@@ -444,3 +444,139 @@ def test_to_pandas_with_future_data(sample_data, future_data):
 
     df = ts.to_pandas()
     assert len(df) == len(sample_data) + len(future_data)
+
+
+def test_unsorted_rows_are_ordered_by_time(sample_data):
+    """Rows given out of order are returned in temporal order within each series."""
+    shuffled = sample_data.sample(frac=1, random_state=0)
+    kwargs = dict(time="timestamp", target="target_value", group=["group_id"])
+    expected = TimeSeries(sample_data, **kwargs)
+    actual = TimeSeries(shuffled, **kwargs)
+
+    for idx in range(len(expected)):
+        assert np.array_equal(actual[idx]["t"], expected[idx]["t"])
+        assert torch.equal(actual[idx]["y"], expected[idx]["y"])
+        assert torch.equal(actual[idx]["x"], expected[idx]["x"])
+        assert actual[idx]["cutoff_time"] == expected[idx]["cutoff_time"]
+    assert np.all(np.diff(actual[0]["t"].astype("int64")) > 0)
+
+
+def test_unsorted_rows_with_future_data(sample_data, future_data):
+    """Out-of-order rows in ``data`` and ``data_future`` give the sorted result."""
+    kwargs = dict(
+        time="timestamp", target="target_value", group=["group_id"], known=["feature1"]
+    )
+    expected = TimeSeries(sample_data, data_future=future_data, **kwargs)
+    actual = TimeSeries(
+        sample_data.sample(frac=1, random_state=1),
+        data_future=future_data.sample(frac=1, random_state=2),
+        **kwargs,
+    )
+    for idx in range(len(expected)):
+        assert np.array_equal(actual[idx]["t"], expected[idx]["t"])
+        torch.testing.assert_close(actual[idx]["x"], expected[idx]["x"], equal_nan=True)
+        torch.testing.assert_close(actual[idx]["y"], expected[idx]["y"], equal_nan=True)
+
+
+def _datamodule_classes():
+    from pytorch_forecasting.data.data_module import (
+        EncoderDecoderTimeSeriesDataModule,
+        TslibDataModule,
+    )
+
+    return [
+        lambda ts: EncoderDecoderTimeSeriesDataModule(
+            ts, max_encoder_length=2, max_prediction_length=1
+        ),
+        lambda ts: TslibDataModule(ts, context_length=2, prediction_length=1),
+    ]
+
+
+@pytest.mark.parametrize("make_datamodule", _datamodule_classes(), ids=["ed", "tslib"])
+def test_datamodule_rejects_duplicate_rows(sample_data, make_datamodule):
+    """Windows cannot be built from two rows with the same group and time."""
+    duplicated = pd.concat([sample_data, sample_data.iloc[[2]]])
+    ts = TimeSeries(
+        duplicated, time="timestamp", target="target_value", group=["group_id"]
+    )
+    with pytest.raises(ValueError, match="share the same `group` and `time`"):
+        make_datamodule(ts)
+
+
+def test_duplicate_rows_without_group_raise(sample_data):
+    """Without groups, the time column alone must be unique."""
+    duplicated = pd.concat([sample_data, sample_data.iloc[[2]]])
+    ts = TimeSeries(duplicated, time="timestamp", target="target_value")
+    with pytest.raises(ValueError, match="share the same `group` and `time`"):
+        ts._validate_unique_rows()
+
+
+def test_same_time_in_different_groups_is_allowed(sample_data):
+    """Equal times are fine across groups."""
+    data = sample_data.copy()
+    data["timestamp"] = pd.date_range("2023-01-01", periods=5).tolist() * 2
+    ts = TimeSeries(data, time="timestamp", target="target_value", group=["group_id"])
+    ts._validate_unique_rows()
+    assert len(ts) == 2
+
+
+def test_duplicate_rows_in_future_data_raise(sample_data, future_data):
+    """The same check applies to ``data_future``."""
+    duplicated = pd.concat([future_data, future_data.iloc[[0]]])
+    ts = TimeSeries(
+        sample_data,
+        data_future=duplicated,
+        time="timestamp",
+        target="target_value",
+        group=["group_id"],
+    )
+    with pytest.raises(ValueError, match="`data_future` has"):
+        ts._validate_unique_rows()
+
+
+def test_prediction_frames_may_repeat_a_time_step():
+    """Overlapping forecast windows repeat a time step, this must stay valid."""
+    y = torch.arange(4.0).reshape(4, 1)
+    t = torch.tensor([5, 6, 6, 7])
+    ts = TimeSeries.from_tensors({"y": y, "t": t}, groups=[0, 0, 0, 0])
+    assert len(ts.to_pandas()) == 4
+
+
+def test_group_missing_in_future_data_has_no_future(sample_data, future_data):
+    """A series without rows in ``data_future`` is returned without a future."""
+    only_group_1 = future_data[future_data["group_id"] == 1]
+    ts = TimeSeries(
+        sample_data,
+        data_future=only_group_1,
+        time="timestamp",
+        target="target_value",
+        group=["group_id"],
+        known=["feature1"],
+    )
+    assert len(ts[0]["t"]) == 8  # 5 observed + 3 future
+    assert len(ts[1]["t"]) == 5  # no future rows for group 2
+
+
+def test_future_data_missing_known_column_raises(sample_data, future_data):
+    """A ``known`` feature must be present in ``data_future``."""
+    with pytest.raises(ValueError, match="`known` names columns of `data_future`"):
+        TimeSeries(
+            sample_data,
+            data_future=future_data.drop(columns=["feature1"]),
+            time="timestamp",
+            target="target_value",
+            group=["group_id"],
+            known=["feature1"],
+        )
+
+
+def test_future_data_missing_group_column_raises(sample_data, future_data):
+    """``data_future`` needs the group columns to be matched with ``data``."""
+    with pytest.raises(ValueError, match="`group` names columns of `data_future`"):
+        TimeSeries(
+            sample_data,
+            data_future=future_data.drop(columns=["group_id"]),
+            time="timestamp",
+            target="target_value",
+            group=["group_id"],
+        )
