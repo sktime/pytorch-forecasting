@@ -323,7 +323,9 @@ class BaseTimeSeriesDataModule(LightningDataModule):
         ----------
         stage : Optional[str], default=None
             Specifies the stage of setup. Can be one of:
+
             - ``"fit"`` : Prepares training and validation datasets.
+            - ``"validate"`` : Prepares the validation dataset.
             - ``"test"`` : Prepares the test dataset.
             - ``"predict"`` : Prepares the dataset for inference.
             - ``None`` : Prepares ``fit`` datasets.
@@ -340,8 +342,13 @@ class BaseTimeSeriesDataModule(LightningDataModule):
         if stage is None or stage == "fit":
             if self.train_dataset is None:
                 self.train_dataset = self._build_dataset(self._train_indices)
-                self.val_dataset = self._build_dataset(self._val_indices)
                 self.train_windows = self.train_dataset.windows
+            if self.val_dataset is None:
+                self.val_dataset = self._build_dataset(self._val_indices)
+                self.val_windows = self.val_dataset.windows
+        elif stage == "validate":
+            if self.val_dataset is None:
+                self.val_dataset = self._build_dataset(self._val_indices)
                 self.val_windows = self.val_dataset.windows
         elif stage == "test":
             if self.test_dataset is None:
