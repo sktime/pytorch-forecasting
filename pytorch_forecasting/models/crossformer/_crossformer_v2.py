@@ -14,7 +14,6 @@ References
 
 from math import ceil
 from typing import Any
-from warnings import warn
 
 import torch
 import torch.nn as nn
@@ -126,12 +125,6 @@ class CrossFormer(TslibBaseModel):
             metadata=metadata,
         )
 
-        warn(
-            "CrossFormer is an experimental model implemented on "
-            "TslibBaseModelV2. It is an unstable version and may be subject "
-            "to unannounced changes. Please use with caution.",
-            UserWarning,
-        )
 
         self.seg_len = seg_len
         self.win_size = win_size
