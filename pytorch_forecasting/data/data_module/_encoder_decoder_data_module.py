@@ -582,8 +582,8 @@ class EncoderDecoderTimeSeriesDataModule(BaseTimeSeriesDataModule):
             return
 
         features_to_scale = {
-            self.time_series_metadata["cols"]["x"][idx]: pos
-            for pos, idx in enumerate(self.continuous_indices)
+            self.time_series_metadata["cols"]["x"][idx]: idx
+            for idx in self.continuous_indices
         }
 
         for feat_name, adapter in self._scalers.items():

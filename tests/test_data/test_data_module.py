@@ -784,3 +784,41 @@ def test_data_less_module_becomes_usable_with_data():
     assert x["encoder_cont"].shape[0] == 4
     assert x["encoder_cont"].shape[1] == 10
     assert x["decoder_cont"].shape[1] == 5
+
+
+def test_fit_scalers_uses_x_column_index_with_preceding_categorical():
+    """Regression test: _fit_scalers must index sample["x"] by column idx, not pos."""
+    n = 30
+    df = pd.DataFrame(
+        {
+            "group_id": [0] * n,
+            "time_idx": list(range(n)),
+            "y": np.arange(n, dtype=float),
+            "cat_1": [1.0, 2.0] * (n // 2),
+            "cont_1": np.linspace(1000.0, 2000.0, n),
+            "cat_2": [3.0, 4.0] * (n // 2),
+            "cont_2": np.linspace(-500.0, -400.0, n),
+        }
+    )
+    ts = TimeSeries(
+        df,
+        time="time_idx",
+        target="y",
+        group=["group_id"],
+        cat=["cat_1", "cat_2"],
+        num=["cont_1", "cont_2"],
+    )
+    dm = EncoderDecoderTimeSeriesDataModule(
+        ts,
+        max_encoder_length=5,
+        max_prediction_length=2,
+        scalers={"cont_1": StandardScaler(), "cont_2": StandardScaler()},
+    )
+    dm.setup("fit")
+
+    assert dm.continuous_indices != list(range(len(dm.continuous_indices)))
+    assert np.isclose(dm._scalers["cont_1"]._scaler.mean_[0], 1500.0, atol=1e-4)
+    assert np.isclose(dm._scalers["cont_2"]._scaler.mean_[0], -450.0, atol=1e-4)
+
+    x, _ = next(iter(dm.train_dataloader()))
+    assert torch.all(x["encoder_cont"].abs() < 5.0)
