@@ -1,15 +1,6 @@
 """
 Crossformer model for PyTorch Forecasting (v2).
 -----------------------------------------------
-
-Port of `Crossformer: Transformer Utilizing Cross-Dimension Dependency for
-Multivariate Time Series Forecasting` (ICLR 2023) to the ``TslibBaseModel``
-API.
-
-References
-----------
-[1] https://arxiv.org/abs/2211.13328
-[2] https://github.com/Thinklab-SJTU/Crossformer
 """
 
 from math import ceil
@@ -75,6 +66,12 @@ class CrossFormer(TslibBaseModel):
         Parameters for the learning rate scheduler.
     metadata : Optional[dict], default=None
         Metadata for the model from TslibDataModule.
+
+    References
+    ----------
+    [1] Crossformer: Transformer Utilizing Cross-Dimension Dependency for
+        Multivariate Time Series Forecasting (https://arxiv.org/abs/2211.13328).
+    [2] https://github.com/Thinklab-SJTU/Crossformer
 
     Notes
     -----

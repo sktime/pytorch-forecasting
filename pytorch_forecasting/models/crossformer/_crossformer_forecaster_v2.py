@@ -55,6 +55,12 @@ class CrossFormerForecaster(BaseForecaster):
         :class:`~pytorch_forecasting.models.base.BaseForecaster`.
     ckpt_path : str or Path, optional
         See :class:`~pytorch_forecasting.models.base.BaseForecaster`.
+
+    References
+    ----------
+    [1] Crossformer: Transformer Utilizing Cross-Dimension Dependency for
+        Multivariate Time Series Forecasting (https://arxiv.org/abs/2211.13328).
+    [2] https://github.com/Thinklab-SJTU/Crossformer
     """
 
     _tags = {
