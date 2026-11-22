@@ -2,7 +2,6 @@
 Dimension-Segment-Wise (DSW) Embedding from Crossformer.
 """
 
-import torch
 import torch.nn as nn
 
 

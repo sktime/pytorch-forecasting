@@ -2,7 +2,6 @@
 Hierarchical Decoder of Crossformer.
 """
 
-import torch
 import torch.nn as nn
 
 from pytorch_forecasting.layers._attention import AttentionLayer, FullAttention
