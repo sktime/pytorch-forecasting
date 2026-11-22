@@ -28,9 +28,9 @@ The Package layer exposes two primary methods for interacting with the model lif
 * ``fit()``: Initiates the training process. You can pass a raw D1 ``TimeSeries`` dataset (which the package will internally wrap in a D2 DataModule) or a pre-configured D2 ``LightningDataModule``.
 * ``predict()``: Generates forecasts. Similar to ``fit()``, this accepts a D1 dataset, a D2 DataModule, or even a standard PyTorch ``DataLoader``. It also accepts a ``return_info`` parameter to easily append identifying columns (like time indices and series IDs) alongside the predictions.
 
-All package classes inherit from :py:class:`~pytorch_forecasting.base._base_pkg.Base_pkg`
+All package (forecaster) classes inherit from :py:class:`~pytorch_forecasting.models.base._base_forecaster.BaseForecaster`
 
-.. autoclass:: pytorch_forecasting.base._base_pkg.Base_pkg
+.. autoclass:: pytorch_forecasting.models.base._base_forecaster.BaseForecaster
    :noindex:
    :members: __init__
 
@@ -38,42 +38,43 @@ All package classes inherit from :py:class:`~pytorch_forecasting.base._base_pkg.
 Code Example
 ------------
 
-Here is how the configuration dictionaries and lifecycle methods come together using the Temporal Fusion Transformer package (``TFT_pkg_v2``):
+Here is how the forecaster API comes together using the Temporal Fusion Transformer forecaster (``TFTForecaster``):
 
 .. code-block:: python
 
-    from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg_v2 import TFT_pkg_v2
-    from pytorch_forecasting.metrics import MAE, SMAPE
-    from pytorch_forecasting.data.encoders import NaNLabelEncoder, TorchNormalizer
-    from sklearn.preprocessing import StandardScaler
+    from lightning.pytorch import Trainer
 
-    # Define Configurations
-    datamodule_cfg = dict(
+    from pytorch_forecasting.data.data_module import (
+        EncoderDecoderTimeSeriesDataModule,
+    )
+    from pytorch_forecasting.metrics import MAE, SMAPE
+    from pytorch_forecasting.models.temporal_fusion_transformer._tft_forecaster_v2 import (
+        TFTForecaster,
+    )
+
+    # Define the datamodule configuration (data-less datamodule)
+    datamodule = EncoderDecoderTimeSeriesDataModule(
         max_encoder_length=30,
         max_prediction_length=1,
         batch_size=32,
     )
 
-    model_cfg = dict(
-        loss=MAE(),
-        logging_metrics=[MAE(), SMAPE()],
-        optimizer="adam",
-        optimizer_params={"lr": 1e-3},
-        hidden_size=64,
-        num_layers=2,
-    )
-
-    trainer_cfg = dict(
+    trainer = Trainer(
         max_epochs=5,
         accelerator="auto",
         devices=1,
     )
 
-    # Initialize the Package
-    model_pkg = TFT_pkg_v2(
-        model_cfg=model_cfg,
-        trainer_cfg=trainer_cfg,
-        datamodule_cfg=datamodule_cfg,
+    # Initialize the forecaster
+    model_pkg = TFTForecaster(
+        hidden_size=64,
+        num_layers=2,
+        loss=MAE(),
+        logging_metrics=[MAE(), SMAPE()],
+        optimizer="adam",
+        optimizer_params={"lr": 1e-3},
+        datamodule=datamodule,
+        trainer=trainer,
     )
 
     # Train the model
@@ -81,7 +82,7 @@ Here is how the configuration dictionaries and lifecycle methods come together u
     model_pkg.fit(dataset)
 
     # Generate predictions
-    preds = model_pkg.predict(dataset, return_info=["index", "x", "y"])
+    preds = model_pkg.predict(dataset, mode="prediction")
 
 
 API Reference
@@ -99,13 +100,14 @@ See the detailed API documentation for the available V2 Package classes below:
    models.samformer._samformer_forecaster_v2.SamformerForecaster
    models.tide._tide_dsipts._tide_forecaster_v2.TIDEForecaster
    models.timexer._timexer_forecaster_v2.TimeXerForecaster
-   models.tsmixer._tsmixer_pkg_v2.TSMixer_pkg_v2
+   models.tsmixer._tsmixer_forecaster_v2.TSMixerForecaster
    models.xlstm._xlstm_forecaster_v2.xLSTMTimeForecaster
    models.mlp._decodermlp_forecaster_v2.DecoderMLPForecaster
    models.softs._softs_forecaster_v2.SOFTSForecaster
    models.scinet._scinet_forecaster_v2.SCINetForecaster
    models.patch_tst._patch_tst_forecaster_v2.PatchTSTForecaster
    models.frets._frets_forecaster_v2.FreTSForecaster
-   models.modern_tcn._modern_tcn_pkg_v2.ModernTCN_pkg_v2
-   models.units._units_pkg_v2.UniTS_pkg_v2
-   models.nhits._nhits_pkg_v2.NHiTS_pkg_v2
+   models.modern_tcn._modern_tcn_forecaster_v2.ModernTCNForecaster
+   models.units._units_forecaster_v2.UniTSForecaster
+   models.nhits._nhits_forecaster_v2.NHiTSForecaster
+   models.crossformer._crossformer_forecaster_v2.CrossFormerForecaster
