@@ -52,3 +52,4 @@ Join the discussion and track our progress on GitHub:
     Metrics <metrics>
     Utils <utils>
     Tutorials <tutorials_v2>
+    FAQ <faq_v2>
