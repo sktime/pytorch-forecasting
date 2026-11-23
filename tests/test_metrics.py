@@ -83,6 +83,22 @@ def test_aggregation_metric(decoder_lengths, y):
         assert torch.isclose(res, (y.mean(0) - y_pred.mean(0)).abs().mean())
 
 
+@pytest.mark.parametrize("weight_shape", [(4, 3), (4,)])
+def test_aggregation_metric_weighted_with_quantiles(weight_shape):
+    torch.manual_seed(0)
+    y_pred = torch.randn(4, 3, 7)
+    y = torch.randn(4, 3)
+    weight = torch.rand(weight_shape)
+
+    res = AggregationMetric(QuantileLoss())(y_pred, (y, weight))
+
+    w = weight if weight.ndim == 2 else weight.unsqueeze(-1).expand(4, 3)
+    y_mean = (y * w).sum(0) / w.sum(0)
+    y_pred_mean = (y_pred * w.unsqueeze(-1)).sum(0) / w.sum(0).unsqueeze(-1)
+    expected = QuantileLoss()(y_pred_mean.unsqueeze(0), y_mean.unsqueeze(0))
+    torch.testing.assert_close(res, expected)
+
+
 def test_none_reduction():
     pred = torch.rand(20, 10)
     target = torch.rand(20, 10)
