@@ -527,6 +527,8 @@ def test_multivariate_target():
 
     x, y = dm.train_dataset[0]
 
-    assert (
-        y.shape[-1] == 2
-    ), "Target should have two dimensions for n_features for multivariate target."
+    assert isinstance(y, list), "Multivariate target should be a list of tensors"
+    assert len(y) == 2, "Target should have 2 tensors for 2 target columns"
+    assert all(
+        t.shape == (dm.prediction_length,) for t in y
+    ), "Each target tensor should have shape (prediction_length,)"
