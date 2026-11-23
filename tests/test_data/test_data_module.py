@@ -827,9 +827,9 @@ def test_fit_scalers_when_categorical_precedes_continuous():
     x, _ = next(iter(dm.train_dataloader()))
     scaled_cont = x["encoder_cont"]
     mean_val = float(scaled_cont.mean())
-    assert abs(mean_val) < 2.0, (
-        f"Scaled continuous feature should be centered near 0, got {mean_val}"
-    )
+    assert (
+        abs(mean_val) < 2.0
+    ), f"Scaled continuous feature should be centered near 0, got {mean_val}"
 
 
 def test_fit_scalers_multiple_interleaved_features():
