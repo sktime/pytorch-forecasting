@@ -11,6 +11,7 @@ import torch
 from torch.utils.data import DataLoader
 import yaml
 
+from pytorch_forecasting.callbacks.predict import _check_predict_args
 from pytorch_forecasting.data import TimeSeries
 from pytorch_forecasting.models.base._base_object import _BasePtObject_v2
 
@@ -370,7 +371,7 @@ class BaseForecaster(_BasePtObject_v2):
         self,
         data: TimeSeries,
         mode: str = "prediction",
-        return_info: list[str] | None = None,
+        return_info: list[str] | str | None = None,
         output_dir: str | Path | None = None,
         trainer: Trainer | None = None,
         **kwargs,
@@ -387,9 +388,10 @@ class BaseForecaster(_BasePtObject_v2):
         mode : str
             The prediction mode ("prediction", "quantiles", or "raw").
         return_info : list of str, optional
-            Extra model outputs to return with the prediction, e.g. ``"x"``,
-            ``"y"``, ``"index"``. Stored in the ``info`` dict of the returned
-            :class:`TimeSeries`, or as keys of the dict for ``mode="raw"``.
+            Extra model outputs to return with the prediction, any of ``"x"``,
+            ``"y"``, ``"index"`` and ``"decoder_lengths"``. Stored in the
+            ``info`` dict of the returned :class:`TimeSeries`, or as keys of the
+            dict for ``mode="raw"``.
         output_dir : str or Path, optional
             If given, the result is also pickled to ``predictions.pkl`` there.
         trainer : lightning.Trainer, optional
@@ -408,11 +410,18 @@ class BaseForecaster(_BasePtObject_v2):
 
             Values are in the space of the fitted target normalizer; no inverse
             transform is applied yet.
+
+        Raises
+        ------
+        ValueError
+            If ``mode`` or an entry of ``return_info`` is not a valid option.
+            Raised before the data is loaded.
         """
         if self.model is None:
             raise RuntimeError(
                 "Model is not initialized. Call `fit` or pass `ckpt_path`."
             )
+        return_info = _check_predict_args(mode, return_info)
 
         dataloader = self._load_dataloader(data)
         predictions = self.model.predict(
