@@ -4,7 +4,6 @@ import torch
 
 from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data import EncoderNormalizer, GroupNormalizer, NaNLabelEncoder
-from pytorch_forecasting.data.examples import generate_ar_data, get_stallion_data
 
 torch.manual_seed(23)
 
