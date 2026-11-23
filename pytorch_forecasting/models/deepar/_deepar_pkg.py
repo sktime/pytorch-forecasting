@@ -52,9 +52,7 @@ class DeepAR_pkg(_BasePtForecaster):
             },
         ]
         defaults = {"hidden_size": 5, "cell_type": "LSTM", "n_plotting_samples": 100}
-        for param in params:
-            param.update(defaults)
-        return params
+        return [{**defaults, **param} for param in params]
 
     @classmethod
     def _get_test_dataloaders_from(cls, params):
