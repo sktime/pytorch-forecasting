@@ -125,6 +125,51 @@ def test_NormalDistributionLoss(center, transformation):
 
 
 @pytest.mark.parametrize(
+    ["loss_cls", "transformation"],
+    itertools.product(
+        [NormalDistributionLoss, MultivariateNormalDistributionLoss],
+        ["softplus", "log", "sqrt"],
+    ),
+)
+def test_normal_losses_zero_target_positive_transformation(loss_cls, transformation):
+    """Zero targets must not raise if the transformation has support (0, inf).
+
+    Regression test for #1550.
+    """
+    loss = loss_cls()
+    normalizer = TorchNormalizer(center=False, transformation=transformation)
+    normalizer.fit(torch.tensor([0.0, 1.0, 2.0, 5.0]))
+    batch_size, n_timesteps = 2, 3
+    target_scale = normalizer.get_parameters().unsqueeze(0).expand(batch_size, -1)
+    n_parameters = 2 if loss_cls is NormalDistributionLoss else 2 + loss.rank
+    parameters = torch.randn(batch_size, n_timesteps, n_parameters)
+    rescaled_parameters = loss.rescale_parameters(
+        parameters, target_scale=target_scale, encoder=normalizer
+    )
+    target = torch.tensor([[0.0, 1.0, 0.0], [3.0, 0.0, 2.0]])
+
+    value = loss.loss(rescaled_parameters, target)
+
+    assert torch.isfinite(value).all()
+
+
+def test_NormalDistributionLoss_no_clamp_without_transformation():
+    """Negative targets are valid without a transformation and are not clamped."""
+    loss = NormalDistributionLoss()
+    normalizer = TorchNormalizer(center=False, transformation=None)
+    normalizer.fit(torch.tensor([-2.0, 0.0, 2.0]))
+    target_scale = normalizer.get_parameters().unsqueeze(0)
+    parameters = torch.randn(1, 3, 2)
+    rescaled_parameters = loss.rescale_parameters(
+        parameters, target_scale=target_scale, encoder=normalizer
+    )
+    target = torch.tensor([[-1.0, 0.0, 1.0]])
+    expected = -loss.map_x_to_distribution(rescaled_parameters).log_prob(target)
+
+    assert torch.allclose(loss.loss(rescaled_parameters, target), expected)
+
+
+@pytest.mark.parametrize(
     ["center", "transformation"],
     itertools.product(
         [True, False], ["log", "log1p", "softplus", "relu", "logit", None]

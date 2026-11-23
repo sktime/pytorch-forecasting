@@ -6,6 +6,7 @@ import numpy as np
 from sklearn.base import BaseEstimator
 import torch
 from torch import distributions, nn
+from torch.distributions import constraints
 import torch.nn.functional as F
 
 from pytorch_forecasting.data.encoders import TorchNormalizer, softplus_inv
@@ -15,13 +16,56 @@ from pytorch_forecasting.metrics.base_metrics import (
 )
 
 
-class NormalDistributionLoss(DistributionLoss):
+def _clamp_to_support(
+    distribution: distributions.Distribution, y: torch.Tensor, clamp_min: float
+) -> torch.Tensor:
+    """Clamp ``y`` into the support of ``distribution`` if it is ``(lower, inf)``.
+
+    Target normalizer transformations such as ``"softplus"``, ``"log"`` or
+    ``"sqrt"`` give the transformed distribution an open support ``(0, inf)``.
+    Targets equal to the bound (e.g. zeros in count data) would make
+    ``log_prob`` raise a ``ValueError``, so they are clamped to
+    ``lower_bound + clamp_min``. Other supports are left unchanged.
     """
-    Normal distribution loss.
+    support = distribution.support
+    while isinstance(support, constraints.independent):
+        support = support.base_constraint
+    if isinstance(support, constraints.greater_than):
+        y = y.clamp(min=support.lower_bound + clamp_min)
+    return y
+
+
+class NormalDistributionLoss(DistributionLoss):
+    """Normal distribution loss.
+
+    Parameters
+    ----------
+    name : str, optional
+        Metric name. Defaults to class name.
+    quantiles : list[float], optional
+        Quantiles for probability range.
+        Defaults to [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98].
+    reduction : str, optional
+        Reduction, "none", "mean" or "sqrt-mean". Defaults to "mean".
+    clamp_min : float, optional
+        If the target normalizer transformation restricts the distribution to
+        ``(0, inf)`` (e.g. ``"softplus"``, ``"log"`` or ``"sqrt"``), targets are
+        clamped to at least this value before computing log-prob, preventing
+        ``ValueError`` when targets contain zeros. Defaults to 1e-12.
     """
 
     distribution_class = distributions.Normal
     distribution_arguments = ["loc", "scale"]
+
+    def __init__(
+        self,
+        name: str = None,
+        quantiles: list[float] | None = None,
+        reduction: str = "mean",
+        clamp_min: float = 1e-12,
+    ):
+        super().__init__(name=name, quantiles=quantiles, reduction=reduction)
+        self.clamp_min = clamp_min
 
     def map_x_to_distribution(self, x: torch.Tensor) -> distributions.Normal:
         distr = self.distribution_class(loc=x[..., 2], scale=x[..., 3])
@@ -38,6 +82,29 @@ class NormalDistributionLoss(DistributionLoss):
                     ],
                 ],
             )
+
+    def loss(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
+        """Calculate negative log-likelihood.
+
+        Clamps ``y_actual`` into the support of the distribution, see
+        ``clamp_min``.
+
+        Parameters
+        ----------
+        y_pred : torch.Tensor
+            Network output.
+        y_actual : torch.Tensor
+            Actual values.
+
+        Returns
+        -------
+        torch.Tensor
+            Metric value on which backpropagation can be applied.
+        """
+        distribution = self.map_x_to_distribution(y_pred)
+        y_actual = _clamp_to_support(distribution, y_actual, self.clamp_min)
+        loss = -distribution.log_prob(y_actual)
+        return loss
 
     def rescale_parameters(
         self,
@@ -75,6 +142,7 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
         rank: int = 10,
         sigma_init: float = 1.0,
         sigma_minimum: float = 1e-3,
+        clamp_min: float = 1e-12,
     ):
         """Initialize metric.
 
@@ -93,6 +161,12 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
             Default value for diagonal covariance. Defaults to 1.0.
         sigma_minimum : float, optional
             Minimum value for diagonal covariance. Defaults to 1e-3.
+        clamp_min : float, optional
+            If the target normalizer transformation restricts the distribution
+            to ``(0, inf)`` (e.g. ``"softplus"``, ``"log"`` or ``"sqrt"``),
+            targets are clamped to at least this value before computing
+            log-prob, preventing ``ValueError`` when targets contain zeros.
+            Defaults to 1e-12.
         """  # noqa: E501
         if quantiles is None:
             quantiles = [0.02, 0.1, 0.25, 0.5, 0.75, 0.9, 0.98]
@@ -100,6 +174,7 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
         self.rank = rank
         self.sigma_minimum = sigma_minimum
         self.sigma_init = sigma_init
+        self.clamp_min = clamp_min
         self.distribution_arguments = list(range(2 + rank))
 
         # determine bias
@@ -137,6 +212,30 @@ class MultivariateNormalDistributionLoss(MultivariateDistributionLoss):
                     ],
                 ],
             )
+
+    def loss(self, y_pred: torch.Tensor, y_actual: torch.Tensor) -> torch.Tensor:
+        """Calculate negative log-likelihood.
+
+        Clamps ``y_actual`` into the support of the distribution, see
+        ``clamp_min``.
+
+        Parameters
+        ----------
+        y_pred : torch.Tensor
+            Network output.
+        y_actual : torch.Tensor
+            Actual values.
+
+        Returns
+        -------
+        torch.Tensor
+            Metric value on which backpropagation can be applied.
+        """
+        distribution = self.map_x_to_distribution(y_pred)
+        y_actual = _clamp_to_support(distribution, y_actual, self.clamp_min)
+        # calculate one number and scale with batch size
+        loss = -distribution.log_prob(y_actual.transpose(0, 1)).sum() * y_actual.size(0)
+        return loss
 
     def rescale_parameters(
         self,
