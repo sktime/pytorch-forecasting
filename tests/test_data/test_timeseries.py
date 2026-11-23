@@ -770,3 +770,147 @@ def test_pytorch_unwriteable_data():
         for warning in w:
             if to_catch in str(warning.message):
                 assert False, "Non-writable NumPy array passed to torch.as_tensor"
+
+
+def test_timeseries_inverse_scaling():
+    """
+    Invert scaling for continuous encoder or decoder inputs.
+
+    This method reconstructs the original (unscaled) values of
+    continuous features after they have been transformed by the
+    dataset's scaling pipeline. It supports mixed scaling strategies,
+    including:
+
+    - user-provided sklearn scalers (e.g., StandardScaler)
+    - internal PyTorch Forecasting normalizers (e.g., EncoderNormalizer)
+    - unscaled features (None)
+    - per-sample scaling parameters used by EncoderNormalizer
+
+    Parameters
+    ----------
+    x_cont : torch.Tensor
+        Continuous input tensor from either a dataset item or a
+        dataloader batch. Shape may be (time, features)
+        or (batch, time, features).
+    mode : {"encoder", "decoder"}, default "encoder"
+        Select whether to invert scaling for encoder or decoder inputs.
+
+    Returns
+    -------
+    torch.Tensor
+        Tensor of the same shape as `x_cont`, containing the
+        reconstructed original values in the raw data space.
+    """
+    # small synthetic dataset
+    df = pd.DataFrame(
+        {
+            "time_idx": list(range(10)) * 2,
+            "series": ["A"] * 10 + ["B"] * 10,
+            "y": np.random.randn(20),
+            "covariate_a": np.linspace(0.0, 1.0, 20),
+            "covariate_b": np.linspace(1.0, 2.0, 20),
+            "covariate_c": np.linspace(-1.0, 1.0, 20),
+        }
+    )
+
+    scalers = {
+        "covariate_a": StandardScaler(),
+        "covariate_b": None,
+        "covariate_c": EncoderNormalizer(),
+    }
+
+    dataset = TimeSeriesDataSet(
+        data=df,
+        time_idx="time_idx",
+        target="y",
+        group_ids=["series"],
+        max_encoder_length=5,
+        max_prediction_length=2,
+        time_varying_unknown_reals=["y", "covariate_a", "covariate_b", "covariate_c"],
+        scalers=scalers,
+    )
+
+    # single item
+    x, _ = dataset[0]
+    x_cont_inv = dataset.inverse_scaling(
+        x["x_cont"], x["target_scale"], x["x_scale_idx"], x["x_scale"]
+    )
+    df_reconstructed = pd.DataFrame(x_cont_inv)
+
+    # compare first few rows to original
+    original = df.loc[
+        df["series"] == "A", ["y", "covariate_a", "covariate_b", "covariate_c"]
+    ].values[: df_reconstructed.shape[0]]
+    assert np.allclose(df_reconstructed.values, original, atol=1e-5)
+
+
+def test_timeseries_inverse_scaling_multi_target():
+    """
+    Invert scaling for continuous encoder or decoder inputs.
+    *Multi-target case*.
+
+    This method reconstructs the original (unscaled) values of
+    continuous features after they have been transformed by the
+    dataset's scaling pipeline. It supports mixed scaling strategies,
+    including:
+
+    - user-provided sklearn scalers (e.g., StandardScaler)
+    - internal PyTorch Forecasting normalizers (e.g., EncoderNormalizer)
+    - unscaled features (None)
+    - per-sample scaling parameters used by EncoderNormalizer
+
+    Parameters
+    ----------
+    x_cont : torch.Tensor
+        Continuous input tensor from either a dataset item or a
+        dataloader batch. Shape may be (time, features)
+        or (batch, time, features).
+    mode : {"encoder", "decoder"}, default "encoder"
+        Select whether to invert scaling for encoder or decoder inputs.
+
+    Returns
+    -------
+    torch.Tensor
+        Tensor of the same shape as `x_cont`, containing the
+        reconstructed original values in the raw data space.
+    """
+    # small synthetic dataset
+    df = pd.DataFrame(
+        {
+            "time_idx": list(range(10)) * 2,
+            "series": ["A"] * 10 + ["B"] * 10,
+            "y": np.random.randn(20),
+            "covariate_a": np.linspace(0.0, 1.0, 20),
+            "covariate_b": np.linspace(1.0, 2.0, 20),
+            "covariate_c": np.linspace(-1.0, 1.0, 20),
+        }
+    )
+
+    scalers = {
+        "covariate_b": StandardScaler(),
+        "covariate_c": EncoderNormalizer(),
+    }
+
+    dataset = TimeSeriesDataSet(
+        data=df,
+        time_idx="time_idx",
+        target=["y", "covariate_a"],
+        group_ids=["series"],
+        max_encoder_length=5,
+        max_prediction_length=2,
+        time_varying_unknown_reals=["y", "covariate_a", "covariate_b", "covariate_c"],
+        scalers=scalers,
+    )
+
+    # single item
+    x, _ = dataset[0]
+    x_cont_inv = dataset.inverse_scaling(
+        x["x_cont"], x["target_scale"], x["x_scale_idx"], x["x_scale"]
+    )
+    df_reconstructed = pd.DataFrame(x_cont_inv)
+
+    # compare first few rows to original
+    original = df.loc[
+        df["series"] == "A", ["y", "covariate_a", "covariate_b", "covariate_c"]
+    ].values[: df_reconstructed.shape[0]]
+    assert np.allclose(df_reconstructed.values, original, atol=1e-5)

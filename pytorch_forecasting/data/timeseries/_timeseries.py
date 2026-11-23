@@ -2134,6 +2134,9 @@ class TimeSeriesDataSet(Dataset):
         target_scale = self.target_normalizer.get_parameters(groups, self.group_ids)
         if not isinstance(self.target_normalizer, MultiNormalizer):
             target_scale = [target_scale]
+        # get input scales in the form of a list
+        data_scale_idx = []
+        data_scale = []
 
         # fill in missing values (if not all time indices are specified)
         sequence_length = len(time)
@@ -2299,15 +2302,23 @@ class TimeSeriesDataSet(Dataset):
                 target_scale[idx] = single_target_scale.numpy()
 
         # rescale covariates
-        for name in self.reals:
+        for idx, name in enumerate(self.reals):
             if name not in self.target_names and name not in self.lagged_variables:
                 normalizer = self.get_transformer(name)
                 if isinstance(normalizer, EncoderNormalizer):
                     # fit and transform
                     pos = self.reals.index(name)
                     normalizer.fit(data_cont[:encoder_length, pos])
+                    # record normalizer parameters
+                    data_scale_idx.append(idx)
+                    data_scale.append(normalizer.get_parameters())
                     # transform
                     data_cont[:, pos] = normalizer.transform(data_cont[:, pos])
+        # set normalizer parameters to torch tensors
+        data_scale_idx = torch.as_tensor(data_scale_idx)
+        data_scale = (
+            torch.stack(data_scale) if data_scale else torch.as_tensor([]).reshape(0, 2)
+        )
 
         # also normalize lagged variables
         for name in self.reals:
@@ -2363,6 +2374,9 @@ class TimeSeriesDataSet(Dataset):
                 encoder_time_idx_start=time[0],
                 groups=groups,
                 target_scale=target_scale,
+                # add input scales as tensors
+                x_scale_idx=data_scale_idx,
+                x_scale=data_scale,
             ),
             (target, weight),
         )
@@ -2403,6 +2417,10 @@ class TimeSeriesDataSet(Dataset):
             * groups: (batch_size), group ids
             * target_scale: (batch_size, num_target),
                 scale of target variables
+            * encoder_scale: (batch_size, num_scaler, 2)
+                scale of scaled covariates
+            * encoder_scale_idx: (batch_size, num_scaler)
+                scaled covariates id
 
         tuple[torch.Tensor, torch.Tensor]
             minibatch, 2-tuple with entries:
@@ -2492,6 +2510,10 @@ class TimeSeriesDataSet(Dataset):
                 ),
             )
 
+        # input scale
+        encoder_scale_idx = torch.stack([batch[0]["x_scale_idx"] for batch in batches])
+        encoder_scale = torch.stack([batch[0]["x_scale"] for batch in batches])
+
         # target and weight
         if isinstance(batches[0][1][0], tuple | list):
             target = [
@@ -2535,6 +2557,9 @@ class TimeSeriesDataSet(Dataset):
                 decoder_time_idx=decoder_time_idx,
                 groups=groups,
                 target_scale=target_scale,
+                # add encoder scale
+                encoder_scale_idx=encoder_scale_idx,
+                encoder_scale=encoder_scale,
             ),
             (target, weight),
         )
@@ -2686,3 +2711,100 @@ class TimeSeriesDataSet(Dataset):
             attributes=self.get_parameters(),
             extra_attributes=dict(length=len(self)),
         )
+
+    def inverse_scaling(self, x_cont, target_scale, x_scale_idx, x_scale):
+        """Transform dataset/dataloader continuous elements into
+        their original (unscaled) values.
+
+        Handles:
+        - StandardScaler (sklearn)
+        - EncoderNormalizer (pytorch-forecasting)
+        - target scaling and per-feature scaling
+        Works for both dataset indexing and dataloader batches.
+
+        Parameters:
+        -----------
+        All inputs: Union(np.ndarray, torch.Tensor) of ndim
+                            dataset    dataloader
+            x_cont:            2           3
+            target_scale:      1           2
+            x_scale_idx:       1           2
+            x_scale            2           3
+
+        Returns:
+        --------
+        A dict mapping self.reals to its rescaled values.
+        """
+
+        def detach_cpu(x):
+            if isinstance(x, torch.Tensor):
+                return x.detach().cpu()
+            if isinstance(x, list):
+                return [detach_cpu(z) for z in x]
+            return x
+
+        x_cont = detach_cpu(x_cont)
+        target_scale = detach_cpu(target_scale)
+        x_scale_idx = detach_cpu(x_scale_idx)
+        x_scale = detach_cpu(x_scale)
+
+        if self.multi_target:
+            target_scale = [
+                scale[None] if scale.ndim == 1 else scale for scale in target_scale
+            ]
+        elif target_scale.ndim == 1:
+            # dataset
+            target_scale = target_scale[None]
+
+        out = {}
+
+        for i, name in enumerate(self.reals):
+            # Extract the i-th real-valued feature from x_cont
+            values = x_cont[..., i]
+
+            if values.ndim == 1:
+                # dataset
+                values = values[..., None]
+
+            transformer = self.get_transformer(name)
+
+            if transformer is None:
+                transformed_values = values
+
+            elif name in self.target_names:
+                if self.multi_target:
+                    scale = target_scale[self.target_names.index(name)]
+                    transformed_values = transformer(
+                        dict(prediction=values, target_scale=scale)
+                    )
+                else:
+                    transformed_values = transformer(
+                        dict(prediction=values, target_scale=target_scale)
+                    )
+
+            # Case: sklearn StandardScaler
+            # → use its inverse_transform directly
+            elif isinstance(transformer, StandardScaler):
+                transformed_values = torch.as_tensor(
+                    transformer.inverse_transform(values)
+                )
+
+            # Case: feature uses EncoderNormalizer
+            # with per-sample scale parameters
+            elif (idx := torch.where(x_scale_idx == i))[0].nelement():
+                transformed_values = transformer(
+                    dict(prediction=values, target_scale=x_scale[idx])
+                )
+
+            else:
+                raise NotImplementedError
+
+            # If dataset mode (2D),
+            # squeeze last dimension for readability
+            if x_cont.ndim == 2:
+                # dataset
+                transformed_values = transformed_values.squeeze(-1)
+
+            out[name] = transformed_values
+
+        return out
