@@ -18,7 +18,57 @@ from pytorch_forecasting.models.tide.sub_modules import _TideModule
 
 
 class TiDEModel(BaseModelWithCovariates):
-    """TiDE model for long-term time-series forecasting."""
+    """Time-series Dense Encoder (TiDE).
+
+    TiDE is an MLP-based architecture for multi-horizon time series forecasting
+    that handles static attributes, past covariates, and dynamic future covariates.
+
+    Examples:
+        >>> import pandas as pd
+        >>> import numpy as np
+        >>> from lightning.pytorch import Trainer
+        >>> from pytorch_forecasting import TimeSeriesDataSet
+        >>> from pytorch_forecasting.models.tide._tide import TiDEModel
+        >>>
+        >>> # Generate toy sequential data
+        >>> data = pd.DataFrame(
+        ...     {
+        ...         "time_idx": np.tile(np.arange(40), 2),
+        ...         "target": np.random.randn(80),
+        ...         "group": np.repeat(["A", "B"], 40),
+        ...     }
+        ... )
+        >>>
+        >>> training = TimeSeriesDataSet(
+        ...     data,
+        ...     time_idx="time_idx",
+        ...     target="target",
+        ...     group_ids=["group"],
+        ...     min_encoder_length=10,
+        ...     max_encoder_length=10,
+        ...     min_prediction_length=5,
+        ...     max_prediction_length=5,
+        ...     time_varying_unknown_reals=["target"],
+        ... )
+        >>> dataloader = training.to_dataloader(batch_size=4)
+        >>>
+        >>> model = TiDEModel.from_dataset(
+        ...     training,
+        ...     input_chunk_length=10,
+        ...     output_chunk_length=5,
+        ...     hidden_size=16,
+        ...     decoder_output_dim=8,
+        ... )
+        >>> trainer = Trainer(
+        ...     fast_dev_run=True,
+        ...     accelerator="cpu",
+        ...     enable_model_summary=False,
+        ...     enable_progress_bar=False,
+        ...     logger=False,
+        ... )
+        >>> trainer.fit(model, dataloader)
+        >>> predictions = model.predict(dataloader)
+    """
 
     @classmethod
     def _pkg(cls):
