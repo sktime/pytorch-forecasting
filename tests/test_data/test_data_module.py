@@ -784,3 +784,114 @@ def test_data_less_module_becomes_usable_with_data():
     assert x["encoder_cont"].shape[0] == 4
     assert x["encoder_cont"].shape[1] == 10
     assert x["decoder_cont"].shape[1] == 5
+
+
+def test_fit_scalers_when_categorical_precedes_continuous():
+    """Regression test for #2536.
+
+    Continuous feature scaler must not fit on categorical column.
+    """
+    df = pd.DataFrame(
+        {
+            "group_id": [0] * 30,
+            "time_idx": list(range(30)),
+            "y": np.arange(30, dtype=float),
+            "cat_feat": [1.0, 2.0] * 15,
+            "cont_feat": np.linspace(1000.0, 2000.0, 30),
+        }
+    )
+    ts = TimeSeries(
+        df,
+        time="time_idx",
+        target="y",
+        group=["group_id"],
+        cat=["cat_feat"],
+        num=["cont_feat"],
+    )
+    dm = EncoderDecoderTimeSeriesDataModule(
+        ts,
+        max_encoder_length=5,
+        max_prediction_length=2,
+        scalers={"cont_feat": StandardScaler()},
+    )
+    dm.setup("fit")
+
+    fitted_mean = dm._scalers["cont_feat"]._scaler.mean_[0]
+    expected_mean = np.mean(df["cont_feat"].values)
+
+    assert np.isclose(fitted_mean, expected_mean), (
+        f"Fitted mean {fitted_mean} should match cont_feat mean {expected_mean}, "
+        "not the categorical feature mean"
+    )
+
+    x, _ = next(iter(dm.train_dataloader()))
+    scaled_cont = x["encoder_cont"]
+    mean_val = float(scaled_cont.mean())
+    assert abs(mean_val) < 2.0, (
+        f"Scaled continuous feature should be centered near 0, got {mean_val}"
+    )
+
+
+def test_fit_scalers_multiple_interleaved_features():
+    """Verify multiple continuous scalers when categoricals are interleaved."""
+    df = pd.DataFrame(
+        {
+            "group": [0] * 40,
+            "time": list(range(40)),
+            "target": np.linspace(0.0, 10.0, 40),
+            "cat1": [1.0, 2.0] * 20,
+            "cat2": [10.0, 20.0] * 20,
+            "cont1": np.linspace(500.0, 1500.0, 40),
+            "cont2": np.linspace(10000.0, 20000.0, 40),
+        }
+    )
+    ts = TimeSeries(
+        df,
+        time="time",
+        target="target",
+        group=["group"],
+        cat=["cat1", "cat2"],
+        num=["cont1", "cont2"],
+    )
+    dm = EncoderDecoderTimeSeriesDataModule(
+        ts,
+        max_encoder_length=6,
+        max_prediction_length=3,
+        scalers={"cont1": StandardScaler(), "cont2": MinMaxScaler()},
+    )
+    dm.setup("fit")
+
+    scaler_cont1 = dm._scalers["cont1"]._scaler
+    scaler_cont2 = dm._scalers["cont2"]._scaler
+
+    assert np.isclose(scaler_cont1.mean_[0], 1000.0)
+    assert np.isclose(scaler_cont2.data_min_[0], 10000.0)
+    assert np.isclose(scaler_cont2.data_max_[0], 20000.0)
+
+
+def test_fit_scalers_without_categorical_features():
+    """Ensure standard behavior is preserved when no categorical features exist."""
+    df = pd.DataFrame(
+        {
+            "group": [0] * 20,
+            "time": list(range(20)),
+            "target": np.arange(20, dtype=float),
+            "cont1": np.linspace(100.0, 200.0, 20),
+        }
+    )
+    ts = TimeSeries(
+        df,
+        time="time",
+        target="target",
+        group=["group"],
+        num=["cont1"],
+    )
+    dm = EncoderDecoderTimeSeriesDataModule(
+        ts,
+        max_encoder_length=4,
+        max_prediction_length=2,
+        scalers={"cont1": StandardScaler()},
+    )
+    dm.setup("fit")
+
+    assert np.isclose(dm._scalers["cont1"]._scaler.mean_[0], 1500.0 / 10)
