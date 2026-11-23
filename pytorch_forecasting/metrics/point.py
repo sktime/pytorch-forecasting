@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torch.nn.utils import rnn
 
 from pytorch_forecasting.metrics.base_metrics import MultiHorizonMetric
-from pytorch_forecasting.utils import unpack_sequence
+from pytorch_forecasting.utils import unpack_sequence, unsqueeze_like
 
 
 class PoissonLoss(MultiHorizonMetric):
@@ -237,7 +237,7 @@ class MASE(MultiHorizonMetric):
 
         # weight samples
         if weight is not None:
-            losses = losses * weight.unsqueeze(-1)
+            losses = losses * unsqueeze_like(weight, losses)
 
         self._update_losses_and_lengths(losses, lengths)
 
