@@ -182,6 +182,39 @@ def test_MultiNormalizer_fitted():
         pytest.fail(f"{NotFittedError}")
 
 
+@pytest.mark.parametrize("data_type", ["numpy", "torch", "pandas"])
+def test_MultiNormalizer_fit_transform(data_type):
+    values = np.array([[1.0, 100.0], [2.0, 200.0], [4.0, 400.0], [8.0, 800.0]])
+    if data_type == "torch":
+        y = torch.tensor(values)
+    elif data_type == "pandas":
+        y = pd.DataFrame(values, columns=["a", "b"])
+    else:
+        y = values
+
+    actual = MultiNormalizer([TorchNormalizer(), TorchNormalizer()]).fit_transform(y)
+
+    assert len(actual) == 2
+    for idx, result in enumerate(actual):
+        # each target is scaled as a TorchNormalizer fitted on that target alone
+        column = y[:, idx] if data_type == "torch" else values[:, idx]
+        expected = TorchNormalizer().fit_transform(column)
+        assert len(result) == len(values)
+        np.testing.assert_allclose(np.asarray(result), expected)
+
+
+def test_MultiNormalizer_fit_transform_passes_groups():
+    data = pd.DataFrame(
+        {"a": [1.0, 2.0, 10.0, 20.0], "b": [3.0, 4.0, 30.0, 40.0], "g": list("xxyy")}
+    )
+    normalizer = MultiNormalizer([GroupNormalizer(groups=["g"]), TorchNormalizer()])
+
+    actual = normalizer.fit_transform(data[["a", "b"]], data)
+
+    expected = GroupNormalizer(groups=["g"]).fit_transform(data["a"], data)
+    np.testing.assert_allclose(np.asarray(actual[0]), expected)
+
+
 def test_TorchNormalizer_dtype_consistency():
     """
     - Ensures that even for float64 `target_scale`, the transformation will not change the prediction dtype.
