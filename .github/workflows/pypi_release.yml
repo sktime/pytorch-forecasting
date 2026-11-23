@@ -5,6 +5,9 @@ on:
     types: [published]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   check_tag:
     name: Check tag
@@ -18,12 +21,14 @@ jobs:
           python-version: '3.11'
 
       - shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           if [ "${{ github.event_name }}" != "release" ]; then
             exit 0
           fi
 
-          TAG="${{ github.event.release.tag_name }}"
+          TAG="${RELEASE_TAG}"
           GH_TAG_NAME="${TAG#v}"
           PY_VERSION=$(python - <<'PY'
           import pathlib, tomllib
