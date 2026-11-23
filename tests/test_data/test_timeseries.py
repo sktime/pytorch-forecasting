@@ -272,6 +272,12 @@ def test_dataset_index(test_dataset):
     assert len(index) <= len(test_dataset), "Index can only be subset of dataset"
 
 
+def test_predict_mode_index_has_unique_columns(test_dataset, test_data):
+    dataset = TimeSeriesDataSet.from_dataset(test_dataset, test_data, predict=True)
+    assert not dataset.index.columns.duplicated().any()
+    assert isinstance(dataset.index["sequence_id"], pd.Series)
+
+
 @pytest.mark.parametrize("min_prediction_idx", [0, 1, 3, 7])
 def test_min_prediction_idx(test_dataset, test_data, min_prediction_idx):
     dataset = TimeSeriesDataSet.from_dataset(

@@ -1881,8 +1881,6 @@ class TimeSeriesDataSet(Dataset):
             "time",
             "sequence_id",
         ]
-        if predict_mode and "sequence_id" in df_index.columns:
-            minimal_columns.append("sequence_id")
 
         df_index = df_index[minimal_columns].astype("int32")
         return df_index.reset_index(drop=True)
