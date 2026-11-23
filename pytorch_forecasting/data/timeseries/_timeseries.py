@@ -209,7 +209,7 @@ class TimeSeriesDataSet(Dataset):
 
     time_idx : str
         integer typed column denoting the time index within ``data``.
-        This columns is used to determine the sequence of samples.
+        This column is used to determine the sequence of samples.
         If there are no missing observations,
         the time index should increase by ``+1`` for each subsequent sample.
         The first time_idx for each series does not necessarily
@@ -327,7 +327,7 @@ class TimeSeriesDataSet(Dataset):
 
     add_encoder_length : Union[bool, str], optional, default="auto"
         whether to add encoder length to list of static real variables.
-        Defaults to "auto", iwhich is same as
+        Defaults to "auto", which is the same as
         ``True`` iff ``min_encoder_length != max_encoder_length``.
 
     target_normalizer : torch transformer, str, list, tuple, optional, default="auto"
@@ -361,7 +361,7 @@ class TimeSeriesDataSet(Dataset):
         ``RobustScaler()`` or ``None`` for using no normalizer / normalizer
         with ``center=0`` and ``scale=1``
         (``method="identity"``).
-        Prefittet encoders will not be fit again (with the exception of the
+        Prefitted encoders will not be fit again (with the exception of the
         :py:class:`~pytorch_forecasting.data.encoders.EncoderNormalizer` that is
         fit on every encoder sequence).
 
