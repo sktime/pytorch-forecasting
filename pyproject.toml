@@ -114,6 +114,8 @@ docs = [
   "nbconvert",
   "recommonmark",
   "docutils",
+  "sphinx-rtd-theme",
+  "myst-parser",
 ]
 
 github-actions = ["pytest-github-actions-annotate-failures<0.4.3"]
