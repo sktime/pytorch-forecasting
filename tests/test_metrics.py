@@ -573,6 +573,38 @@ def test_MASE():
     assert (scaling > 0).all(), "Scaling should be positive"
 
 
+def test_MASE_scaling_is_the_mean_absolute_difference():
+    from pytorch_forecasting.metrics import MASE
+
+    # [0, 2] has one difference of 2. Dividing that difference by n = 2 returns 1.
+    scaling = MASE.calculate_scaling(
+        torch.tensor([[2.0]]),
+        torch.tensor([1]),
+        torch.tensor([[0.0]]),
+        torch.tensor([1]),
+    )
+    assert torch.allclose(scaling, torch.tensor([2.0]), atol=1e-5)
+
+    metric = MASE()
+    metric.update(
+        torch.tensor([[4.0]]),
+        torch.tensor([[2.0]]),
+        torch.tensor([[0.0]]),
+        torch.tensor([1]),
+    )
+    # Absolute error 2 over a scale of 2 is 1. The same division by n returns 2.
+    assert torch.allclose(metric.compute(), torch.tensor(1.0), atol=1e-5)
+
+    # The short row is [0, 4]. Its padded neighbour must not enter the mean.
+    scaling = MASE.calculate_scaling(
+        torch.tensor([[4.0], [4.0]]),
+        torch.tensor([1, 1]),
+        torch.tensor([[0.0, 2.0], [0.0, 99.0]]),
+        torch.tensor([2, 1]),
+    )
+    assert torch.allclose(scaling, torch.tensor([2.0, 4.0]), atol=1e-5)
+
+
 def test_QuantileLoss_to_prediction_fallback():
     """Test to_prediction selects median when present, nearest quantile otherwise."""
 
