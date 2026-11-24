@@ -5,35 +5,57 @@ M Layer v2
     Please note that the v2 modules are currently in active-development and is in beta right now, so please use this API with caution.
     See complete documentation for v2 API :doc:`here <api_v2>` and stable v1 documentation :doc:`here <api>`.
 
-.. _models:
+.. _m-layer-v2:
 
 .. currentmodule:: pytorch_forecasting
 
-The forecasting models in the V2 ecosystem are designed with a strict emphasis on modularity and separation of concerns. The architecture decouples algorithmic logic from data processing, ensuring that models act as pure, data-agnostic PyTorch Lightning instances.
+The M layer contains the PyTorch Lightning model implementations. Each model
+defines the forecasting architecture and the steps Lightning uses for training,
+validation, testing, and prediction. It receives batches from a compatible
+DataModule and does not own raw-data preparation.
 
-Available Models
+Use a model's Forecaster for the higher-level ``fit`` and ``predict``
+interface. To customize the Lightning workflow, create a compatible DataModule
+and pass the M-layer model and DataModule to a Lightning ``Trainer`` directly.
+The v2 workflow and its data and forecaster layers are described in
+:doc:`Models v2 <models_v2>`.
+
+Available models
 ----------------
 
-Below is a summary of the forecasting models currently implemented and supported in the new API.
+The overview below lists the v2 models and their compatible data modules.
 
 .. model-overview-v2::
 
-Implementing new architectures
--------------------------------
+Implementing a model
+--------------------
 
-Please see the `Extension Templates <https://github.com/sktime/pytorch-forecasting/tree/main/extension_templates/v2>`_ to understand the process and design of the implementations.
+See the `v2 extension templates
+<https://github.com/sktime/pytorch-forecasting/tree/main/extension_templates/v2>`_
+for examples of the expected model and test structure. Model implementations
+inherit from :class:`~pytorch_forecasting.models.base._base_model_v2.BaseModel`
+or a specialized base model, such as
+:class:`~pytorch_forecasting.models.base._tslib_base_model_v2.TslibBaseModel`.
+The DataModule supplies metadata that models use to configure their input
+layers. See :doc:`Data v2 <data_v2>` for the available DataModules and their
+responsibilities.
 
-Every model should inherit from a base model in :py:mod:`~pytorch_forecasting.models.base._base_model_v2`.
+Base model
+----------
+
+The base model provides the common Lightning interface for metrics, optimizer
+and scheduler configuration, and training, evaluation, and prediction steps.
+Architecture-specific code implements the model's forward pass.
 
 .. autoclass:: pytorch_forecasting.models.base._base_model_v2.BaseModel
    :noindex:
    :members: __init__
 
-
-API Reference
+API reference
 -------------
 
-See the detailed API documentation for the V2 base classes and specific model implementations below:
+See the detailed API documentation for the v2 base classes and model
+implementations below.
 
 .. currentmodule:: pytorch_forecasting
 
