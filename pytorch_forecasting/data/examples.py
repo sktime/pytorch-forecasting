@@ -22,13 +22,26 @@ def _get_data_by_filename(fname: str) -> Path:
 
     Returns:
         Path: path at which file lives
+
+    Raises:
+        RuntimeError: if the file could not be downloaded
     """
     full_fname = DATA_PATH.joinpath(fname)
 
     # check if file exists - download if necessary
     if not full_fname.exists():
         url = BASE_URL + fname
-        urlretrieve(url, full_fname)  # noqa: S310
+        # download to a temporary file first, so a failed or interrupted
+        # download does not leave a broken file behind
+        tmp_fname = full_fname.with_name(full_fname.name + ".part")
+        try:
+            urlretrieve(url, tmp_fname)  # noqa: S310
+            tmp_fname.replace(full_fname)
+        except OSError as e:
+            tmp_fname.unlink(missing_ok=True)
+            raise RuntimeError(
+                f"Failed to download dataset '{fname}' from {url}"
+            ) from e
 
     return full_fname
 
