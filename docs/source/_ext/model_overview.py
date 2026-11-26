@@ -30,20 +30,25 @@ _CAPABILITY_TAGS = [
 def _clean_model_name(class_name):
     """Derive a clean display name from the registry class name.
 
-    Strips ``_pkg_v2`` and ``_pkg`` suffixes introduced by the packaging
-    layer so that the table shows the canonical model name instead of the
-    internal wrapper name.
+    Strips ``_pkg_v2``, ``_pkg``, and ``Forecaster`` suffixes introduced
+    by the packaging layer so that the table shows the canonical model name
+    instead of the internal wrapper name.
 
     Examples
     --------
     ``TFT_pkg``       -> ``TFT``
     ``DLinear_pkg_v2`` -> ``DLinear_v2``
     ``TFT_pkg_v2``    -> ``TFT_v2``
+    ``TFTForecaster`` -> ``TFT_v2``
+    ``DLinearForecaster`` -> ``DLinear_v2``
     """
     if class_name.endswith("_pkg_v2"):
         return class_name[: -len("_pkg_v2")] + "_v2"
     if class_name.endswith("_pkg"):
         return class_name[: -len("_pkg")]
+    if class_name.endswith("Forecaster"):
+        base = class_name[: -len("Forecaster")]
+        return base if base.endswith("_v2") else base + "_v2"
     return class_name
 
 
@@ -66,7 +71,7 @@ def _object_type_to_version(object_type):
 def _model_class_for_link(klass):
     """Return the implementation class that docs links should target.
 
-    Registry entries are package wrapper classes. When possible, resolve the
+    Registry entries are forecaster wrapper classes. When possible, resolve the
     underlying model class so generated links lead to the model implementation.
     """
     get_cls = getattr(klass, "get_cls", None)
@@ -114,7 +119,7 @@ def _get_model_rows():
         if not model_name:
             continue
 
-        # Build the clean display name (strip _pkg / _pkg_v2 suffixes)
+        # Build the clean display name (strip _pkg / _pkg_v2 / Forecaster suffixes)
         display_name = _clean_model_name(klass.__name__)
 
         # Build the module path for cross-reference to the model implementation.
