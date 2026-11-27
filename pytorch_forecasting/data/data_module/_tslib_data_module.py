@@ -455,7 +455,6 @@ class TslibDataModule(BaseTimeSeriesDataModule):
             - features: str
                 Feature combination mode.
         """
-        # TODO: include handling for datasets without get_metadata()
         ds_metadata = self.time_series_metadata
 
         feature_names = {
