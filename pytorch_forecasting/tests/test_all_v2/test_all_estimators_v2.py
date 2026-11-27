@@ -7,7 +7,7 @@ import shutil
 import torch
 
 from pytorch_forecasting.data import TimeSeries
-from pytorch_forecasting.tests.test_all_estimators import (
+from pytorch_forecasting.tests.models.test_all_estimators import (
     EstimatorFixtureGenerator,
     EstimatorPackageConfig,
 )

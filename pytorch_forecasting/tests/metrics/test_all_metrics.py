@@ -5,7 +5,7 @@ from skbase.utils.dependencies import _check_soft_dependencies
 import torch
 from torch.nn.utils import rnn
 
-from pytorch_forecasting.metrics.tests._config import (
+from pytorch_forecasting.tests.metrics._config import (
     EXCLUDE_METRICS,
     EXCLUDED_TESTS,
 )
