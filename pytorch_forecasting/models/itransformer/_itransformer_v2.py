@@ -51,7 +51,8 @@ class iTransformer(TslibBaseModel):
     factor : int, default=1
         Attention factor passed to ``FullAttention``.
     activation : str, default="gelu"
-        Activation function for the encoder feed-forward network (``"relu"`` or ``"gelu"``).
+        Activation function for the encoder feed-forward network
+        (``"relu"`` or ``"gelu"``).
     use_norm : bool, default=True
         Whether to apply non-stationary instance normalization and de-normalization.
     use_efficient_attention : bool, default=False
@@ -83,9 +84,7 @@ class iTransformer(TslibBaseModel):
     @classmethod
     def _pkg(cls):
         """Package containing the model."""
-        from pytorch_forecasting.models.itransformer._itransformer_forecaster_v2 import (
-            iTransformerForecaster,
-        )
+        from pytorch_forecasting.models.itransformer import iTransformerForecaster
 
         return iTransformerForecaster
 
