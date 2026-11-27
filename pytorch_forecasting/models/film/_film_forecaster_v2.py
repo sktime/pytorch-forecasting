@@ -134,7 +134,7 @@ class FiLMForecaster(BaseForecaster):
         """
         import torch.nn as nn
 
-        from pytorch_forecasting.metrics import QuantileLoss, SMAPE
+        from pytorch_forecasting.metrics import SMAPE, QuantileLoss
 
         params = [
             {},

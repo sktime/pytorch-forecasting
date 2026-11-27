@@ -13,11 +13,10 @@ from typing import Any
 import warnings
 
 import numpy as np
+from scipy import signal, special as ss
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from scipy import signal
-from scipy import special as ss
 from torch.optim import Optimizer
 
 from pytorch_forecasting.metrics import QuantileLoss
