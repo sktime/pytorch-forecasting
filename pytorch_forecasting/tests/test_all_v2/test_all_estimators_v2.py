@@ -97,10 +97,11 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
                 f"{mode}: expected {n_windows} windows * {pred_len} steps rows, "
                 f"got {len(df)}"
             )
-            # within one window, time indices are consecutive
+            group, time = predict_data._group, predict_data._time
+            assert set(group + [time]) <= set(df.columns), list(df.columns)
             first_window = df.iloc[:pred_len]
-            assert first_window["_series"].nunique() == 1
-            assert (first_window["_time_idx"].diff().dropna() == 1).all()
+            assert len(first_window[group].drop_duplicates()) == 1
+            assert (first_window[time].diff().dropna() == 1).all()
 
         return_info_keys = ["index", "x"]
         info_out = pkg.predict(
