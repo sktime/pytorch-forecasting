@@ -12,6 +12,6 @@ This is the list of models that are present in the stable version of the ``pytor
 
 v2 Models
 ----------
-The models that are present in the experimental, unstable ``pytorch-forecasting`` :doc:`v2 <api_v2>`. These models should be used with CAUTION!
+The models that are present in the experimental, unstable ``pytorch-forecasting`` :doc:`v2 <api_v2>`. These models should be used with CAUTION! V2 models are provided as ``Forecaster`` classes which wrap the underlying model implementation.
 
 .. model-overview-v2::
