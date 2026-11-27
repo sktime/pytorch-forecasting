@@ -22,6 +22,7 @@ from pytorch_forecasting.models.patch_tst import (
     PatchTST_v2,
     PatchTSTForecaster,
 )
+from pytorch_forecasting.models.pattn import PAttn, PAttnForecaster
 from pytorch_forecasting.models.rnn import RecurrentNetwork
 from pytorch_forecasting.models.scinet import SCINet_v2, SCINetForecaster
 from pytorch_forecasting.models.softs import SOFTS, SOFTSForecaster
@@ -41,6 +42,8 @@ __all__ = [
     "PatchTST_v2",
     "PatchTST_pkg",
     "PatchTSTForecaster",
+    "PAttn",
+    "PAttnForecaster",
     "TemporalFusionTransformer",
     "RecurrentNetwork",
     "DeepAR",
