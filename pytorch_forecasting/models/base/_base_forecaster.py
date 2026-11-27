@@ -1,4 +1,3 @@
-from dataclasses import replace
 import inspect
 from pathlib import Path
 import pickle
@@ -7,7 +6,6 @@ from typing import Any
 from lightning import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint, ModelSummary
 from lightning.pytorch.core.datamodule import LightningDataModule
-import pandas as pd
 import torch
 import yaml
 
@@ -31,6 +29,13 @@ def _clone_trainer(trainer: Trainer) -> Trainer:
     kwargs["enable_progress_bar"] = trainer.progress_bar_callback is not None
     kwargs["enable_model_summary"] = any(isinstance(c, ModelSummary) for c in callbacks)
     return Trainer(**kwargs)
+
+
+def _flatten(y: torch.Tensor | list[torch.Tensor]) -> torch.Tensor:
+    """Stack per-target outputs and flatten to one row per forecast step."""
+    if isinstance(y, (list, tuple)):
+        y = torch.stack(list(y), dim=2)
+    return y.reshape(y.shape[0] * y.shape[1], -1)
 
 
 class BaseForecaster(_BasePtObject_v2):
@@ -221,7 +226,7 @@ class BaseForecaster(_BasePtObject_v2):
         Parameters
         ----------
         y : torch.Tensor or list of torch.Tensor
-            Model output tensor, in the space of the original target.
+            Model output tensor.
         index : dict of str to np.ndarray
             As returned by the datamodule's ``window_index``, one entry per
             forecast step. Used as the frame of the result.
@@ -261,34 +266,22 @@ class BaseForecaster(_BasePtObject_v2):
             The origin and actual columns are not part of the schema, only of
             the frame.
         """
-        if isinstance(y, (list, tuple)):
-            y = torch.stack(list(y), dim=2)
-        n_windows, pred_len = y.shape[:2]
-        y = y.reshape(n_windows * pred_len, -1).numpy()
-
-        target = list(metadata["cols"]["y"])
-        if not label_targets or len(target) != y.shape[1]:
-            target = [f"y{i}" for i in range(y.shape[1])]
-
-        origin = index.pop(f"{time}_origin")
-        for i, col in enumerate(target):
-            index[col] = y[:, i]
-
         info = dict(info or {})
         y_true = info.pop("y", None)
-        ts = TimeSeries(
-            pd.DataFrame(index), time=time, target=target, group=group or None
-        )
-        ts.metadata = replace(ts.metadata, is_prediction=True)
-        ts.info = info
-        ts.data[f"{time}_origin"] = origin
+        extra = {k: v for k, v in index.items() if k != time and k not in group}
         if y_true is not None:
-            if isinstance(y_true, (list, tuple)):
-                y_true = torch.stack(list(y_true), dim=-1)
-            y_true = y_true.reshape(n_windows * pred_len, -1).numpy()
-            for i, col in enumerate(metadata["cols"]["y"]):
-                ts.data[f"{col}_actual"] = y_true[:, i]
-        return ts
+            y_true = _flatten(y_true).numpy()
+            names = metadata["cols"]["y"]
+            extra.update({f"{c}_actual": y_true[:, i] for i, c in enumerate(names)})
+
+        return TimeSeries.from_tensors(
+            {"y": _flatten(y), "t": torch.as_tensor(index[time])},
+            time=time,
+            metadata=metadata if label_targets else None,
+            groups={g: index[g] for g in group},
+            info=info,
+            extra=extra,
+        )
 
     def _save_artifact(self, output_dir: Path):
         """Save all configuration artifacts."""
@@ -410,9 +403,7 @@ class BaseForecaster(_BasePtObject_v2):
             with ``metadata.is_prediction=True``, one row per forecast step and
             the ``return_info`` outputs in its ``info`` dict, except ``"y"``,
             which becomes one ``<target>_actual`` column per target in the
-            frame. Values are in the space of the original target. For
-            ``mode="raw"``, the model's dict, in the space of the fitted target
-            normalizer.
+            frame. For ``mode="raw"``, the model's dict.
         """
         if self.model is None:
             raise RuntimeError(
