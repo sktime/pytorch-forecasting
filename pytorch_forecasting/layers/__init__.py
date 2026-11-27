@@ -23,6 +23,8 @@ from pytorch_forecasting.layers._embeddings import (
 from pytorch_forecasting.layers._encoders import (
     Encoder,
     EncoderLayer,
+    iTransformerEncoder,
+    iTransformerEncoderLayer,
 )
 from pytorch_forecasting.layers._mlp import FullyConnectedModule
 from pytorch_forecasting.layers._normalization import RevIN
@@ -68,4 +70,6 @@ __all__ = [
     "embedding_cat_variables",
     "FreTSCore",
     "FullyConnectedModule",
+    "iTransformerEncoder",
+    "iTransformerEncoderLayer",
 ]
