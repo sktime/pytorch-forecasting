@@ -1,3 +1,4 @@
+from lightning.pytorch import LightningModule, Trainer
 import numpy as np
 import pandas as pd
 import pytest
@@ -10,7 +11,10 @@ from sklearn.preprocessing import (
 import torch
 
 from pytorch_forecasting import GroupNormalizer, MultiNormalizer, NaNLabelEncoder
-from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
+from pytorch_forecasting.data.data_module import (
+    EncoderDecoderTimeSeriesDataModule,
+    TslibDataModule,
+)
 from pytorch_forecasting.data.encoders import EncoderNormalizer, TorchNormalizer
 from pytorch_forecasting.data.timeseries import TimeSeries
 
@@ -784,3 +788,88 @@ def test_data_less_module_becomes_usable_with_data():
     assert x["encoder_cont"].shape[0] == 4
     assert x["encoder_cont"].shape[1] == 10
     assert x["decoder_cont"].shape[1] == 5
+
+
+@pytest.mark.parametrize(
+    "dm_factory",
+    [
+        lambda ts: EncoderDecoderTimeSeriesDataModule(
+            time_series=ts,
+            max_encoder_length=10,
+            max_prediction_length=5,
+            batch_size=4,
+        ),
+        lambda ts: TslibDataModule(
+            time_series=ts,
+            context_length=10,
+            prediction_length=5,
+            batch_size=4,
+        ),
+    ],
+    ids=["encoder_decoder", "tslib"],
+)
+def test_setup_validate_stage(dm_factory):
+    """setup('validate') prepares val_dataset without requiring prior fit."""
+    dm = dm_factory(make_timeseries(seed=0))
+
+    dm.setup(stage="validate")
+    assert dm.train_dataset is None
+    assert dm.val_dataset is not None
+    assert len(dm.val_windows) > 0
+
+    batch = next(iter(dm.val_dataloader()))
+    assert batch is not None
+
+    # Idempotent on repeated validate calls and preserved when fit follows
+    first_val_dataset = dm.val_dataset
+    dm.setup(stage="validate")
+    assert dm.val_dataset is first_val_dataset
+
+    dm.setup(stage="fit")
+    assert dm.train_dataset is not None
+    assert len(dm.train_windows) > 0
+    assert dm.val_dataset is first_val_dataset
+
+
+@pytest.mark.parametrize(
+    "dm_factory",
+    [
+        lambda ts: EncoderDecoderTimeSeriesDataModule(
+            time_series=ts,
+            max_encoder_length=10,
+            max_prediction_length=5,
+            batch_size=4,
+        ),
+        lambda ts: TslibDataModule(
+            time_series=ts,
+            context_length=10,
+            prediction_length=5,
+            batch_size=4,
+        ),
+    ],
+    ids=["encoder_decoder", "tslib"],
+)
+def test_trainer_validate_without_fit(dm_factory):
+    """Trainer.validate() works directly on a fresh v2 datamodule."""
+
+    class _DummyValidator(LightningModule):
+        def __init__(self):
+            super().__init__()
+            self.batches_seen = 0
+
+        def validation_step(self, batch, batch_idx):
+            self.batches_seen += 1
+            return torch.tensor(0.0)
+
+    dm = dm_factory(make_timeseries(seed=0))
+    model = _DummyValidator()
+    trainer = Trainer(
+        accelerator="cpu",
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+        enable_model_summary=False,
+    )
+    trainer.validate(model, datamodule=dm)
+
+    assert model.batches_seen > 0
