@@ -68,7 +68,9 @@ def test_itransformer_forward_point(use_norm, activation, cont_dim):
         use_norm=use_norm,
         metadata=metadata,
     )
-    batch = _make_batch(batch_size=4, context_length=12, cont_dim=cont_dim, target_dim=1)
+    batch = _make_batch(
+        batch_size=4, context_length=12, cont_dim=cont_dim, target_dim=1
+    )
     out = model(batch)
 
     assert "prediction" in out
@@ -114,7 +116,9 @@ def test_itransformer_forward_quantile():
 def test_itransformer_encoder_layer():
     layer = iTransformerEncoderLayer(
         attention=AttentionLayer(
-            FullAttention(False, factor=1, attention_dropout=0.0, output_attention=False),
+            FullAttention(
+                False, factor=1, attention_dropout=0.0, output_attention=False
+            ),
             d_model=16,
             n_heads=2,
         ),
