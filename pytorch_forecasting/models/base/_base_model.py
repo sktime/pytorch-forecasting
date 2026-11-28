@@ -2555,7 +2555,7 @@ class AutoRegressiveBaseModel(BaseModel):
 
                             # overwrite at lagged targets positions
                             for lag, lag_positions in lagged_target_positions.items():
-                                if idx > lag:  # only overwrite if target has been generated
+                                if idx >= lag:  # only overwrite if target has been generated
                                     x[:, 0, lag_positions] = lagged_targets[-lag]
 
                             decoder_output, hidden_state = self.rnn(x, hidden_state)

@@ -1,13 +1,18 @@
+import copy
 import pickle
 import shutil
 
 import lightning.pytorch as pl
 from lightning.pytorch.callbacks import EarlyStopping
 from lightning.pytorch.loggers import TensorBoardLogger
+import numpy as np
+import pandas as pd
 import pytest
 from test_models.conftest import make_dataloaders
+import torch
 from torch import nn
 
+from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data.encoders import GroupNormalizer
 from pytorch_forecasting.metrics import (
     BetaDistributionLoss,
@@ -259,3 +264,46 @@ def test_pickle(dataloaders_with_covariates, loss):
     )
     pkl = pickle.dumps(model)
     pickle.loads(pkl)  # noqa: S301
+
+
+@pytest.mark.parametrize("lag", [1, 2, 3])
+def test_sampling_does_not_use_future_lagged_targets(lag):
+    """When sampling, the lagged target at decoder step ``idx >= lag`` refers to a
+    decoder target and must be filled with an earlier sample, so the samples must
+    not depend on the decoder targets at all.
+    """
+    max_prediction_length = 5
+    data = pd.DataFrame(
+        dict(
+            series=np.repeat(["a", "b"], 30),
+            time_idx=np.tile(np.arange(30), 2),
+            value=np.sin(np.arange(60) / 3.0),
+        )
+    )
+    dataset = TimeSeriesDataSet(
+        data,
+        time_idx="time_idx",
+        target="value",
+        group_ids=["series"],
+        max_encoder_length=8,
+        min_prediction_length=max_prediction_length,
+        max_prediction_length=max_prediction_length,
+        time_varying_unknown_reals=["value"],
+        lags={"value": [lag]},
+    )
+    x, _ = next(iter(dataset.to_dataloader(train=False, batch_size=4)))
+    net = DeepAR.from_dataset(dataset, hidden_size=5)
+    net.eval()
+
+    # overwrite all decoder inputs that hold decoder targets: the target itself
+    # and the lagged target from decoder step ``lag`` on
+    x_perturbed = copy.deepcopy(x)
+    x_perturbed["decoder_cont"][:, :, net.target_positions] = 100.0
+    x_perturbed["decoder_cont"][:, lag:, net.lagged_target_positions[lag]] = 100.0
+
+    with torch.no_grad():
+        torch.manual_seed(0)
+        expected = net(x, n_samples=10)["prediction"]
+        torch.manual_seed(0)
+        actual = net(x_perturbed, n_samples=10)["prediction"]
+    torch.testing.assert_close(actual, expected)
