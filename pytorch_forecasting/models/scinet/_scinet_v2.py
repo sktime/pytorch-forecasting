@@ -64,13 +64,13 @@ class SCINet_v2(BaseModel):
     """
 
     @classmethod
-    def _pkg(cls):
-        """Return the package class for this model.
+    def _forecaster(cls):
+        """Return the forecaster class for this model.
 
         Returns
         -------
         SCINetForecaster : type
-            Package class associated with this model.
+            Forecaster class associated with this model.
         """
         from pytorch_forecasting.models.scinet._scinet_forecaster_v2 import (
             SCINetForecaster,

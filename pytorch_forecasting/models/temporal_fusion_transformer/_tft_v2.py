@@ -14,8 +14,8 @@ from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
 class TFT(BaseModel):
     @classmethod
-    def _pkg(cls):
-        """Package containing the model."""
+    def _forecaster(cls):
+        """Forecaster containing the model."""
         from pytorch_forecasting.models.temporal_fusion_transformer import (
             TFTForecaster,
         )

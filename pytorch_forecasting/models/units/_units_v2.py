@@ -66,8 +66,8 @@ class UniTS(BaseModel):
     """
 
     @classmethod
-    def _pkg(cls):
-        """Package containing the model."""
+    def _forecaster(cls):
+        """Forecaster containing the model."""
         from pytorch_forecasting.models.units._units_forecaster_v2 import (
             UniTSForecaster,
         )

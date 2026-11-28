@@ -102,10 +102,22 @@ class BaseModel(LightningModule):
             UserWarning,
         )
 
+    @classmethod
+    def _forecaster(cls):
+        """Return the forecaster class for this model."""
+        if hasattr(cls, "_pkg"):
+            return cls._pkg()
+        raise NotImplementedError(f"{cls.__name__} must implement `_forecaster`.")
+
+    @classproperty
+    def forecaster(cls):
+        """Forecaster class for the model."""
+        return cls._forecaster()
+
     @classproperty
     def pkg(cls):
-        """Package class for the model."""
-        return cls._pkg()
+        """Alias for :attr:`forecaster` kept while test utilities migrate."""
+        return cls.forecaster
 
     def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """

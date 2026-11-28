@@ -60,13 +60,13 @@ class FreTS(BaseModel):
     """
 
     @classmethod
-    def _pkg(cls):
-        """Return the package class for this model.
+    def _forecaster(cls):
+        """Return the forecaster class for this model.
 
         Returns
         -------
         FreTSForecaster : type
-            Package class associated with this model.
+            Forecaster class associated with this model.
         """
         from pytorch_forecasting.models.frets._frets_forecaster_v2 import (
             FreTSForecaster,

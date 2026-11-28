@@ -86,7 +86,7 @@ class NHiTS_v2(BaseModel):
     """
 
     @classmethod
-    def _pkg(cls):
+    def _forecaster(cls):
         """Return the forecaster class for this model.
 
         Returns
