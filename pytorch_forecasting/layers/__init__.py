@@ -23,6 +23,7 @@ from pytorch_forecasting.layers._embeddings import (
 from pytorch_forecasting.layers._encoders import (
     Encoder,
     EncoderLayer,
+    PAttnEncoderLayer,
 )
 from pytorch_forecasting.layers._mlp import FullyConnectedModule
 from pytorch_forecasting.layers._normalization import RevIN
@@ -54,6 +55,7 @@ __all__ = [
     "TransformerBlock",
     "Encoder",
     "EncoderLayer",
+    "PAttnEncoderLayer",
     "FlattenHead",
     "PatchTSTFlattenHead",
     "mLSTMCell",
