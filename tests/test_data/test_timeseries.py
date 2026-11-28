@@ -770,3 +770,60 @@ def test_pytorch_unwriteable_data():
         for warning in w:
             if to_catch in str(warning.message):
                 assert False, "Non-writable NumPy array passed to torch.as_tensor"
+
+
+@pytest.mark.parametrize("feature_scaler", ["default", "unfitted", "prefitted"])
+def test_no_feature_names_warning_with_encoder_normalizer_target_scales(
+    feature_scaler,
+):
+    """Scalers should not warn about feature names when transforming values.
+
+    Regression test for #1303.
+    """
+    rng = np.random.default_rng(0)
+    data = pd.DataFrame(
+        {
+            "time_idx": np.tile(np.arange(30), 2),
+            "group": np.repeat(["a", "b"], 30),
+            "value": rng.normal(size=60).cumsum(),
+            "feature": rng.normal(size=60),
+        }
+    )
+    scalers = {
+        "default": {},
+        "unfitted": {"feature": StandardScaler()},
+        "prefitted": {"feature": StandardScaler().fit(data[["feature"]])},
+    }[feature_scaler]
+    dataset = TimeSeriesDataSet(
+        data,
+        time_idx="time_idx",
+        target="value",
+        group_ids=["group"],
+        max_encoder_length=5,
+        max_prediction_length=2,
+        time_varying_unknown_reals=["value", "feature"],
+        target_normalizer=EncoderNormalizer(),
+        add_target_scales=True,
+        constant_fill_strategy={"feature": 0.5},
+        allow_missing_timesteps=True,
+        scalers=scalers,
+    )
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        x, _ = dataset[0]
+        next(iter(dataset.to_dataloader(batch_size=4)))
+        dataset.set_overwrite_values(1.0, variable="feature", target="decoder")
+        dataset[0]
+
+    msgs = [str(warning.message) for warning in w]
+    assert not [m for m in msgs if "feature names" in m], msgs
+
+    # scale features match the encoder normalizer's parameters
+    scale = x["target_scale"]
+    center_scaler = dataset.get_transformer("value_center")
+    expected = center_scaler.transform(pd.DataFrame({"value_center": [scale[0]]}))
+    center_pos = dataset.reals.index("value_center")
+    assert torch.allclose(
+        x["x_cont"][:, center_pos], torch.tensor(float(expected[0, 0]))
+    )

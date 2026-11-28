@@ -1259,7 +1259,9 @@ class TimeSeriesDataSet(Dataset):
                 # lagged variables are only transformed - not fitted
                 continue
             elif name not in self._scalers:
-                self._scalers[name] = StandardScaler().fit(data[[name]])
+                # fit on an array, so transforming arrays in __getitem__ does not
+                # warn about missing feature names
+                self._scalers[name] = StandardScaler().fit(data[[name]].to_numpy())
             elif self._scalers[name] is not None:
                 try:
                     check_is_fitted(self._scalers[name])
@@ -1405,11 +1407,21 @@ class TimeSeriesDataSet(Dataset):
             elif isinstance(transformer, EncoderNormalizer):
                 return transform(values, **kwargs)
             else:
+                # sklearn transformers warn if the input has feature names
+                # and they were fitted without, or the other way round
+                feature_names = getattr(transformer, "feature_names_in_", None)
+                fitted_on_array = feature_names is None and hasattr(
+                    transformer, "n_features_in_"
+                )
                 if isinstance(values, pd.Series):
                     values = values.to_frame()
+                    if fitted_on_array:
+                        values = values.to_numpy()
                     return np.asarray(transform(values, **kwargs)).reshape(-1)
                 else:
                     values = values.reshape(-1, 1)
+                    if feature_names is not None:
+                        values = pd.DataFrame(np.asarray(values), columns=feature_names)
                     return transform(values, **kwargs).reshape(-1)
         else:
             return values
@@ -2285,12 +2297,12 @@ class TimeSeriesDataSet(Dataset):
                         target_normalizer.transform(target[idx])
                     )
                 if self.add_target_scales:
-                    data_cont[:, self.reals.index(f"{target_name}_center")] = (
+                    data_cont[:, self.reals.index(f"{target_name}_center")] = float(
                         self.transform_values(
                             f"{target_name}_center", single_target_scale[0]
                         )[0]
                     )
-                    data_cont[:, self.reals.index(f"{target_name}_scale")] = (
+                    data_cont[:, self.reals.index(f"{target_name}_scale")] = float(
                         self.transform_values(
                             f"{target_name}_scale", single_target_scale[1]
                         )[0]
