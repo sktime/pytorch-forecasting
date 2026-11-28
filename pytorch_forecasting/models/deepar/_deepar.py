@@ -484,7 +484,7 @@ class DeepAR(AutoRegressiveBaseModelWithCovariates):
                 x = input_vector[:, [idx]]
                 x[:, 0, target_pos] = lagged_targets[-1]
                 for lag, lag_positions in lagged_target_positions.items():
-                    if idx > lag:
+                    if idx >= lag:
                         x[:, 0, lag_positions] = lagged_targets[-lag]
                 prediction, hidden_state = self.decode_all(x, hidden_state)
                 prediction = apply_to_list(
