@@ -11,6 +11,10 @@ from pytorch_forecasting.models.base import (
 from pytorch_forecasting.models.baseline import Baseline
 from pytorch_forecasting.models.deepar import DeepAR
 from pytorch_forecasting.models.frets import FreTS, FreTSForecaster
+from pytorch_forecasting.models.itransformer import (
+    iTransformer,
+    iTransformerForecaster,
+)
 from pytorch_forecasting.models.mlp import DecoderMLP
 from pytorch_forecasting.models.modern_tcn import ModernTCN
 from pytorch_forecasting.models.nbeats import NBeats, NBeatsKAN
@@ -65,4 +69,6 @@ __all__ = [
     "ModernTCN",
     "FreTS",
     "FreTSForecaster",
+    "iTransformer",
+    "iTransformerForecaster",
 ]
