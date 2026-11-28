@@ -202,3 +202,52 @@ def test_itransformer_context_length_mismatch_error(sample_dataset):
     wrong_batch = {"history_target": torch.randn(2, 20, 1)}
     with pytest.raises(ValueError, match="does not match configured context_length"):
         model(wrong_batch)
+
+
+def test_itransformer_no_features_raises(sample_dataset):
+    """Test ValueError when no valid features are found in input dictionary."""
+    dm = sample_dataset["data_module"]
+    model = ITransformer(
+        loss=MAE(),
+        d_model=16,
+        n_heads=2,
+        e_layers=1,
+        d_ff=32,
+        metadata=dm.metadata,
+    )
+    with pytest.raises(
+        ValueError, match="No valid input features found in the input dictionary"
+    ):
+        model._prepare_input_data({})
+
+
+def test_itransformer_cont_only_no_target_indices():
+    # Edge-case path: forward with use_norm=True and only history_cont
+    metadata = {
+        "context_length": 16,
+        "prediction_length": 4,
+        "n_features": {
+            "continuous": 2,
+            "categorical": 0,
+            "target": 0,
+        },
+        "features": {
+            "continuous": ["feat1", "feat2"],
+            "categorical": [],
+            "target": [],
+        },
+    }
+    model = ITransformer(
+        loss=MAE(),
+        d_model=16,
+        n_heads=2,
+        e_layers=1,
+        d_ff=32,
+        use_norm=True,
+        metadata=metadata,
+    )
+    batch = {"history_cont": torch.randn(4, 16, 2)}
+    output = model(batch)
+    assert "prediction" in output
+    assert output["prediction"].shape == (4, 4, 2)
+    assert torch.isfinite(output["prediction"]).all()
