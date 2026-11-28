@@ -15,31 +15,34 @@ Architecture
 ------------
 The v2 models in ``pytorch-forecasting`` are separated into two distinct sub-layers:
 
-* **The M Layer (Model):** The core ``torch`` neural network implementation, inheriting from PyTorch Lightning's ``LightningModule``. Designed for experienced developers, this layer allows you to bypass the package wrapper to build fully custom training, testing, and prediction pipelines.
+* **The M Layer (Model):** The core ``torch`` neural network implementation, inheriting from PyTorch Lightning's ``LightningModule``. Designed for experienced developers, this layer allows you to bypass the forecaster wrapper to build fully custom training, testing, and prediction pipelines.
     * **Learn more:** :doc:`M Layer v2 Documentation <m_layer_v2>`
-    * **Examples:** :doc:`v2 Tutorials <tutorials_v2>` (covers both custom pipelines and P Layer usage).
+    * **Examples:** :doc:`v2 Tutorials <tutorials_v2>` (covers both custom pipelines and forecaster usage).
 
-* **The P Layer (Package):** Unlike v1 (which was purely for testing), the v2 Package layer provides a high-level, ``sklearn``-like interface along with the testing capabilities and tags registry. It wraps the M Layer to enable fast and easy training, prediction, and checkpointing without writing boilerplate PyTorch code. Simply pass a :py:class:`~pytorch_forecasting.data.timeseries.TimeSeries` object alongside your datamodule, model, and trainer configs to use ``model_pkg.fit()`` and ``model_pkg.predict()``.
-    * **Learn more:** :doc:`P Layer Documentation <pkg_v2>`
+* **The F Layer (Forecaster):** Unlike the v1 package layer (which was purely for testing), the v2 forecaster layer provides a high-level, ``sklearn``-like interface along with the testing capabilities and tags registry. It wraps the M Layer to enable fast and easy training, prediction, and checkpointing without writing boilerplate PyTorch code. Simply pass a :py:class:`~pytorch_forecasting.data.timeseries._timeseries_v2.TimeSeries` object to ``forecaster.fit()`` and ``forecaster.predict()``.
+    * **Learn more:** :doc:`Forecaster Layer Documentation <pkg_v2>`
     * **Examples:** :doc:`v2 Training and Inference Walkthrough </tutorials/ptf_V2_example>`.
 
 
 Usage
 ------
 
-Because the Package layer acts as a high-level orchestrator, the workflow for setting up and training a model relies on configuration dictionaries. You define the data and the configurations, and pass them directly to the package class. See :doc:`Package classes Documentation <pkg>` for more info.
+Because the forecaster layer acts as a high-level orchestrator, you pass the model's parameters directly to the forecaster, along with a configured datamodule and a ``lightning.Trainer``. See :doc:`Forecaster classes Documentation <pkg_v2>` for more info.
 
 Here is a complete example of the V2 workflow using the Temporal Fusion Transformer (TFT):
 
-1. Using :doc:`Package Class <pkg_v2>`:
+1. Using :doc:`Forecaster Class <pkg_v2>`:
 
 .. code-block:: python
 
-    from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg_v2 import TFT_pkg_v2
-    from pytorch_forecasting.data.timeseries._timeseries_v2 import TimeSeries
-    from pytorch_forecasting.data.encoders import NaNLabelEncoder, TorchNormalizer
+    from lightning.pytorch import Trainer
     from sklearn.preprocessing import StandardScaler
+
+    from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
+    from pytorch_forecasting.data.encoders import NaNLabelEncoder, TorchNormalizer
+    from pytorch_forecasting.data.timeseries import TimeSeries
     from pytorch_forecasting.metrics import MAE, SMAPE
+    from pytorch_forecasting.models.temporal_fusion_transformer import TFTForecaster
 
     # 1. D1 Layer: Create the TimeSeries dataset
     # This takes the raw pandas DataFrame and prepares the tensor extraction
@@ -55,51 +58,53 @@ Here is a complete example of the V2 workflow using the Temporal Fusion Transfor
         static=["static_feature", "static_feature_cat"],
     )
 
-    # 2. D2 Layer Configuration
-    datamodule_cfg = dict(
+    # 2. D2 Layer: a configured but data-less datamodule - `fit` attaches the data
+    datamodule = EncoderDecoderTimeSeriesDataModule(
         max_encoder_length=30,
         max_prediction_length=1,
         batch_size=32,
+        categorical_encoders={
+            "category": NaNLabelEncoder(add_nan=True),
+            "static_feature_cat": NaNLabelEncoder(add_nan=True),
+        },
+        scalers={
+            "x": StandardScaler(),
+            "future_known_feature": StandardScaler(),
+            "static_feature": StandardScaler(),
+        },
+        target_normalizer=TorchNormalizer(),
     )
 
-    # 3. Model Configuration
-    model_cfg = dict(
+    # 3. F Layer: Orchestration - model parameters are passed directly
+    forecaster = TFTForecaster(
+        hidden_size=64,
+        num_layers=2,
+        attention_head_size=4,
+        dropout=0.1,
         loss=MAE(),
         logging_metrics=[MAE(), SMAPE()],
         optimizer="adam",
         optimizer_params={"lr": 1e-3},
         lr_scheduler="reduce_lr_on_plateau",
         lr_scheduler_params={"mode": "min", "factor": 0.1, "patience": 10},
-        hidden_size=64,
-        num_layers=2,
-        attention_head_size=4,
-        dropout=0.1,
+        datamodule=datamodule,
+        trainer=Trainer(
+            max_epochs=5,
+            accelerator="auto",
+            devices=1,
+            enable_progress_bar=True,
+            log_every_n_steps=10,
+        ),
     )
 
-    # 4. Trainer Configuration
-    trainer_cfg = dict(
-        max_epochs=5,
-        accelerator="auto",
-        devices=1,
-        enable_progress_bar=True,
-        log_every_n_steps=10,
-    )
+    # Fit the model
+    forecaster.fit(dataset)
 
-    # 5. Package Layer: Orchestration
-    model_pkg = TFT_pkg_v2(
-        model_cfg=model_cfg,
-        trainer_cfg=trainer_cfg,
-        datamodule_cfg=datamodule_cfg,
-    )
-
-    # Fit the model (You can pass the D1 dataset or a D2 DataModule here)
-    model_pkg.fit(dataset)
-
-    # Generate predictions (You can also pass a DataModule or Dataloader here)
-    preds = model_pkg.predict(dataset, return_info=["index", "x", "y"])
+    # Generate predictions
+    preds = forecaster.predict(dataset, return_info=["index", "x", "y"])
 
 
-2. Without using ``Package`` class, here we are using :py:class:`~data.data_module.EncoderDecoderDataModule` and ``Lightning``'s trainer, but you can use your own implementations of the datamodule and trainer for this workflow.
+2. Without using the ``Forecaster`` class, here we are using :py:class:`~pytorch_forecasting.data.data_module._encoder_decoder_data_module.EncoderDecoderTimeSeriesDataModule` and ``Lightning``'s trainer, but you can use your own implementations of the datamodule and trainer for this workflow.
 
 .. code-block:: python
 
@@ -124,7 +129,7 @@ Here is a complete example of the V2 workflow using the Temporal Fusion Transfor
 
     # create the `data_module` that handles the dataloaders and preprocessing
     data_module = EncoderDecoderTimeSeriesDataModule(
-        time_series_dataset=dataset,
+        time_series=dataset,
         max_encoder_length=30,
         max_prediction_length=1,
         batch_size=32,
@@ -161,10 +166,10 @@ Here is a complete example of the V2 workflow using the Temporal Fusion Transfor
 Details and available models
 -------------------------------
 
-See the API documentation for further details on M layer and P layer and the list of the models:
+See the API documentation for further details on the M layer and the F layer and the list of the models:
 
 .. toctree::
     :maxdepth: 2
 
     M Layer <m_layer_v2>
-    P Layer <pkg_v2>
+    Forecaster Layer <pkg_v2>

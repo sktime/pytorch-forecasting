@@ -1,5 +1,5 @@
-Package (P) Layer v2
-=====================
+Forecaster (F) Layer v2
+========================
 
 .. warning::
     Please note that the v2 modules are currently in active-development and is in beta right now, so please use this API with caution.
@@ -7,87 +7,95 @@ Package (P) Layer v2
 
 .. currentmodule:: pytorch_forecasting
 
-The Package Layer is the defining feature of the V2 user experience. While the underlying D1, D2, and Model layers are strictly decoupled to maintain separation of concerns, the Package layer acts as the **Orchestrator**.
+The Forecaster layer is the defining feature of the V2 user experience. While the underlying D1, D2, and Model layers are strictly decoupled to maintain separation of concerns, the Forecaster layer acts as the **Orchestrator**.
 
-It wraps the PyTorch Lightning boilerplate and provides a streamlined, ``scikit-learn``-like interface. By passing standard Python dictionaries for configuration, the Package layer automatically handles the instantiation of the DataModule, extracts the necessary metadata, initializes the underlying forecasting model, and manages the training loop.
+It wraps the PyTorch Lightning boilerplate and provides a streamlined, ``scikit-learn``-like interface. The forecaster builds the model once the input shapes are known - they are read from the metadata of the datamodule - and manages the training loop, the checkpointing and the prediction pipeline.
 
-The Configuration Driven Workflow
----------------------------------
+.. note::
+    In earlier pre-releases this layer was called the *Package* (P) layer, and its
+    classes were named ``<Model>_pkg_v2``. They are now named ``<Model>Forecaster``
+    and take model parameters directly instead of ``model_cfg``/``trainer_cfg``/``datamodule_cfg``
+    dictionaries.
 
-To use a V2 Package, you do not need to manually instantiate the DataModule or the Model. Instead, you provide three configuration dictionaries to the Package wrapper:
+The Forecaster Workflow
+-----------------------
 
-1. ``datamodule_cfg``: Parameters for the D2 layer (e.g., batch size, scalers, encoders, and maximum sequence lengths).
-2. ``model_cfg``: Parameters for the core neural network (e.g., hidden sizes, dropout, loss metrics, and optimizers).
-3. ``trainer_cfg``: Parameters for the PyTorch Lightning ``Trainer`` (e.g., max epochs, accelerator type, and logging configurations).
+To use a V2 forecaster, you do not need to manually instantiate the model. You pass:
+
+1. The model's own parameters (e.g. hidden sizes, dropout, loss metrics, and optimizers) directly to the forecaster - they mirror the parameters of the underlying M layer model.
+2. ``datamodule``: a configured but data-less D2 datamodule (e.g. batch size, scalers, encoders, and maximum sequence lengths). ``fit`` attaches the data to it. Defaults to the model's default datamodule class.
+3. ``trainer``: a ``lightning.Trainer`` (e.g. max epochs, accelerator type, and logging configurations). Each ``fit`` trains on a new trainer with this configuration. Defaults to ``Trainer()``.
 
 `sklearn` like Methods
 -----------------------
 
-The Package layer exposes two primary methods for interacting with the model lifecycle:
+The Forecaster layer exposes two primary methods for interacting with the model lifecycle:
 
-* ``fit()``: Initiates the training process. You can pass a raw D1 ``TimeSeries`` dataset (which the package will internally wrap in a D2 DataModule) or a pre-configured D2 ``LightningDataModule``.
-* ``predict()``: Generates forecasts. Similar to ``fit()``, this accepts a D1 dataset, a D2 DataModule, or even a standard PyTorch ``DataLoader``. It also accepts a ``return_info`` parameter to easily append identifying columns (like time indices and series IDs) alongside the predictions.
+* ``fit()``: Initiates the training process. It takes a D1 :py:class:`~pytorch_forecasting.data.timeseries._timeseries_v2.TimeSeries` dataset, which the datamodule splits into training and validation data. By default it saves the best checkpoint together with the datamodule config and the metadata, so the forecaster can later be restored with ``ckpt_path``.
+* ``predict()``: Generates forecasts for a ``TimeSeries``. It returns a ``TimeSeries`` of predictions for ``mode="prediction"`` and ``"quantiles"``, or the model's raw output dict for ``mode="raw"``. It also accepts a ``return_info`` parameter to easily append extra model outputs (like ``"index"``, ``"x"`` and ``"y"``) alongside the predictions.
 
-All package classes inherit from :py:class:`~pytorch_forecasting.base._base_pkg.Base_pkg`
+All forecaster classes inherit from :py:class:`~pytorch_forecasting.models.base._base_forecaster.BaseForecaster`
 
-.. autoclass:: pytorch_forecasting.base._base_pkg.Base_pkg
+.. autoclass:: pytorch_forecasting.models.base._base_forecaster.BaseForecaster
    :noindex:
-   :members: __init__
+   :members: __init__, fit, predict
 
 
 Code Example
 ------------
 
-Here is how the configuration dictionaries and lifecycle methods come together using the Temporal Fusion Transformer package (``TFT_pkg_v2``):
+Here is how the model parameters, the datamodule, the trainer and the lifecycle methods come together using the Temporal Fusion Transformer forecaster (``TFTForecaster``):
 
 .. code-block:: python
 
-    from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg_v2 import TFT_pkg_v2
-    from pytorch_forecasting.metrics import MAE, SMAPE
-    from pytorch_forecasting.data.encoders import NaNLabelEncoder, TorchNormalizer
+    from lightning.pytorch import Trainer
     from sklearn.preprocessing import StandardScaler
 
-    # Define Configurations
-    datamodule_cfg = dict(
+    from pytorch_forecasting.data.data_module import EncoderDecoderTimeSeriesDataModule
+    from pytorch_forecasting.data.encoders import TorchNormalizer
+    from pytorch_forecasting.metrics import MAE, SMAPE
+    from pytorch_forecasting.models.temporal_fusion_transformer import TFTForecaster
+
+    # Configure the D2 layer - no data is passed here, `fit` attaches it
+    datamodule = EncoderDecoderTimeSeriesDataModule(
         max_encoder_length=30,
         max_prediction_length=1,
         batch_size=32,
+        scalers={"x": StandardScaler()},
+        target_normalizer=TorchNormalizer(),
     )
 
-    model_cfg = dict(
+    # Initialize the Forecaster - model parameters are passed directly
+    forecaster = TFTForecaster(
+        hidden_size=64,
+        num_layers=2,
         loss=MAE(),
         logging_metrics=[MAE(), SMAPE()],
         optimizer="adam",
         optimizer_params={"lr": 1e-3},
-        hidden_size=64,
-        num_layers=2,
-    )
-
-    trainer_cfg = dict(
-        max_epochs=5,
-        accelerator="auto",
-        devices=1,
-    )
-
-    # Initialize the Package
-    model_pkg = TFT_pkg_v2(
-        model_cfg=model_cfg,
-        trainer_cfg=trainer_cfg,
-        datamodule_cfg=datamodule_cfg,
+        datamodule=datamodule,
+        trainer=Trainer(max_epochs=5, accelerator="auto", devices=1),
     )
 
     # Train the model
     # (Assuming `dataset` is a previously defined D1 TimeSeries object)
-    model_pkg.fit(dataset)
+    forecaster.fit(dataset)
 
     # Generate predictions
-    preds = model_pkg.predict(dataset, return_info=["index", "x", "y"])
+    preds = forecaster.predict(dataset, return_info=["index", "x", "y"])
+
+A fitted forecaster can be restored from the checkpoint written by ``fit``:
+
+.. code-block:: python
+
+    forecaster = TFTForecaster(ckpt_path="checkpoints/best-epoch=4-step=100.ckpt")
+    preds = forecaster.predict(dataset)
 
 
 API Reference
 -------------
 
-See the detailed API documentation for the available V2 Package classes below:
+See the detailed API documentation for the available V2 forecaster classes below:
 
 .. currentmodule:: pytorch_forecasting
 
@@ -99,13 +107,13 @@ See the detailed API documentation for the available V2 Package classes below:
    models.samformer._samformer_forecaster_v2.SamformerForecaster
    models.tide._tide_dsipts._tide_forecaster_v2.TIDEForecaster
    models.timexer._timexer_forecaster_v2.TimeXerForecaster
-   models.tsmixer._tsmixer_pkg_v2.TSMixer_pkg_v2
+   models.tsmixer._tsmixer_forecaster_v2.TSMixerForecaster
    models.xlstm._xlstm_forecaster_v2.xLSTMTimeForecaster
    models.mlp._decodermlp_forecaster_v2.DecoderMLPForecaster
    models.softs._softs_forecaster_v2.SOFTSForecaster
    models.scinet._scinet_forecaster_v2.SCINetForecaster
    models.patch_tst._patch_tst_forecaster_v2.PatchTSTForecaster
    models.frets._frets_forecaster_v2.FreTSForecaster
-   models.modern_tcn._modern_tcn_pkg_v2.ModernTCN_pkg_v2
-   models.units._units_pkg_v2.UniTS_pkg_v2
-   models.nhits._nhits_pkg_v2.NHiTS_pkg_v2
+   models.modern_tcn._modern_tcn_forecaster_v2.ModernTCNForecaster
+   models.units._units_forecaster_v2.UniTSForecaster
+   models.nhits._nhits_forecaster_v2.NHiTSForecaster
