@@ -35,11 +35,16 @@ Here is a complete example of the V2 workflow using the Temporal Fusion Transfor
 
 .. code-block:: python
 
-    from pytorch_forecasting.models.temporal_fusion_transformer._tft_pkg_v2 import TFT_pkg_v2
+    from lightning.pytorch import Trainer
+
+    from pytorch_forecasting.data.data_module import (
+        EncoderDecoderTimeSeriesDataModule,
+    )
     from pytorch_forecasting.data.timeseries._timeseries_v2 import TimeSeries
-    from pytorch_forecasting.data.encoders import NaNLabelEncoder, TorchNormalizer
-    from sklearn.preprocessing import StandardScaler
     from pytorch_forecasting.metrics import MAE, SMAPE
+    from pytorch_forecasting.models.temporal_fusion_transformer._tft_forecaster_v2 import (
+        TFTForecaster,
+    )
 
     # 1. D1 Layer: Create the TimeSeries dataset
     # This takes the raw pandas DataFrame and prepares the tensor extraction
@@ -55,15 +60,23 @@ Here is a complete example of the V2 workflow using the Temporal Fusion Transfor
         static=["static_feature", "static_feature_cat"],
     )
 
-    # 2. D2 Layer Configuration
-    datamodule_cfg = dict(
+    # 2. D2 Layer: data-less datamodule
+    datamodule = EncoderDecoderTimeSeriesDataModule(
         max_encoder_length=30,
         max_prediction_length=1,
         batch_size=32,
     )
 
-    # 3. Model Configuration
-    model_cfg = dict(
+    trainer = Trainer(
+        max_epochs=5,
+        accelerator="auto",
+        devices=1,
+        enable_progress_bar=True,
+        log_every_n_steps=10,
+    )
+
+    # 3. Package Layer: Orchestration
+    model_pkg = TFTForecaster(
         loss=MAE(),
         logging_metrics=[MAE(), SMAPE()],
         optimizer="adam",
@@ -74,29 +87,15 @@ Here is a complete example of the V2 workflow using the Temporal Fusion Transfor
         num_layers=2,
         attention_head_size=4,
         dropout=0.1,
+        datamodule=datamodule,
+        trainer=trainer,
     )
 
-    # 4. Trainer Configuration
-    trainer_cfg = dict(
-        max_epochs=5,
-        accelerator="auto",
-        devices=1,
-        enable_progress_bar=True,
-        log_every_n_steps=10,
-    )
-
-    # 5. Package Layer: Orchestration
-    model_pkg = TFT_pkg_v2(
-        model_cfg=model_cfg,
-        trainer_cfg=trainer_cfg,
-        datamodule_cfg=datamodule_cfg,
-    )
-
-    # Fit the model (You can pass the D1 dataset or a D2 DataModule here)
+    # Fit the model (You can pass the D1 dataset here)
     model_pkg.fit(dataset)
 
-    # Generate predictions (You can also pass a DataModule or Dataloader here)
-    preds = model_pkg.predict(dataset, return_info=["index", "x", "y"])
+    # Generate predictions
+    preds = model_pkg.predict(dataset, mode="prediction")
 
 
 2. Without using ``Package`` class, here we are using :py:class:`~data.data_module.EncoderDecoderDataModule` and ``Lightning``'s trainer, but you can use your own implementations of the datamodule and trainer for this workflow.

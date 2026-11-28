@@ -57,3 +57,4 @@ See the detailed API documentation for the V2 base classes and specific model im
    models.modern_tcn._modern_tcn_v2.ModernTCN
    models.units._units_v2.UniTS
    models.nhits._nhits_v2.NHiTS_v2
+   models.crossformer._crossformer_v2.CrossFormer
