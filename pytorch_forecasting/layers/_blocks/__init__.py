@@ -5,6 +5,10 @@ from pytorch_forecasting.layers._blocks._scinet_block import SCIBlock
 from pytorch_forecasting.layers._blocks._softs_block import (
     STADModule,
 )
+from pytorch_forecasting.layers._blocks._timesnet_block import (
+    TimesBlock,
+    fft_for_period,
+)
 from pytorch_forecasting.layers._blocks._transformer_block import TransformerBlock
 from pytorch_forecasting.layers._blocks._tsmixer_block import TSMixerBlock
 
@@ -16,4 +20,6 @@ __all__ = [
     "STADModule",
     "TSMixerBlock",
     "TransformerBlock",
+    "TimesBlock",
+    "fft_for_period",
 ]

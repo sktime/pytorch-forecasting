@@ -48,6 +48,7 @@ See the detailed API documentation for the V2 base classes and specific model im
    models.tide._tide_dsipts._tide_v2.TIDE
    models.timexer._timexer_v2.TimeXer
    models.tsmixer._tsmixer_v2.TSMixer
+   models.timesnet._timesnet_v2.TimesNet
    models.xlstm._xlstm_v2.xLSTMTime_v2
    models.mlp._decodermlp_v2.DecoderMLP_v2
    models.softs._softs_v2.SOFTS
