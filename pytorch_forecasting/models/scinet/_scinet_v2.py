@@ -28,7 +28,7 @@ class SCINet_v2(BaseModel):
     ----------
     num_stacks : int, default=1
         Number of stacked SCITree modules.
-    num_levels : int, default=3
+    num_levels : int, default=1
         Depth of the binary decomposition tree.
         Input sequence length must satisfy
         ``context_length % (2 ** num_levels) == 0``.
@@ -81,7 +81,7 @@ class SCINet_v2(BaseModel):
     def __init__(
         self,
         num_stacks: int = 1,
-        num_levels: int = 3,
+        num_levels: int = 1,
         hid_size: int = 1,
         kernel_size: int = 5,
         dropout: float = 0.5,

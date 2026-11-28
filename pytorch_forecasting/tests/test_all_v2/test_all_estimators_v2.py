@@ -4,6 +4,9 @@ import os
 from pathlib import Path
 import shutil
 
+from lightning import Trainer
+import numpy as np
+import pandas as pd
 import torch
 
 from pytorch_forecasting.data import TimeSeries
@@ -42,6 +45,44 @@ class TestAllPtForecastersV2(EstimatorPackageConfig, EstimatorFixtureGenerator):
 
         _integration(pkg, test_data, dm_cfg)
 
+        shutil.rmtree(tmp_path, ignore_errors=True)
+
+    def test_minimal_vignette(self, object_pkg, tmp_path):
+        """Test minimal fit and predict vignette with all default parameters."""
+        frame = pd.DataFrame(
+            {
+                "group": np.repeat(np.arange(10), 40),
+                "time": np.tile(np.arange(40), 10),
+                "target": 100.0 + np.tile(np.arange(40, dtype=float), 10),
+                "feature": np.tile(np.arange(40, dtype=float), 10),
+            }
+        )
+        data = TimeSeries(
+            frame,
+            time="time",
+            target="target",
+            group=["group"],
+            num=["feature"],
+        )
+
+        forecaster = object_pkg()
+        trainer = Trainer(
+            max_epochs=1,
+            limit_train_batches=1,
+            limit_val_batches=1,
+            accelerator="cpu",
+            enable_progress_bar=False,
+            enable_model_summary=False,
+            enable_checkpointing=False,
+            logger=False,
+            default_root_dir=str(tmp_path),
+        )
+        forecaster.fit(data, trainer=trainer, save_ckpt=False)
+        predictions = forecaster.predict(data)
+
+        assert isinstance(predictions, TimeSeries)
+        assert predictions.metadata.is_prediction
+        assert len(predictions.to_pandas()) > 0
         shutil.rmtree(tmp_path, ignore_errors=True)
 
     def test_checkpointing(self, object_pkg, trainer_kwargs, tmp_path):
