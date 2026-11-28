@@ -55,8 +55,8 @@ class PatchTST_v2(BaseModel):
     """
 
     @classmethod
-    def _pkg(cls):
-        """Package containing the model."""
+    def _forecaster(cls):
+        """Forecaster containing the model."""
         from pytorch_forecasting.models.patch_tst._patch_tst_forecaster_v2 import (
             PatchTSTForecaster,
         )

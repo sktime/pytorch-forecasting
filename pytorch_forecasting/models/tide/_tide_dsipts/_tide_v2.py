@@ -17,8 +17,8 @@ class TIDE(BaseModel):
     """  # noqa: E501
 
     @classmethod
-    def _pkg(cls):
-        """Package containing the model."""
+    def _forecaster(cls):
+        """Forecaster containing the model."""
         from pytorch_forecasting.models.tide._tide_dsipts import TIDEForecaster
 
         return TIDEForecaster

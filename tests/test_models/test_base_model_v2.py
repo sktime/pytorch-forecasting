@@ -3,6 +3,7 @@ import warnings
 import pytest
 import torch
 
+from pytorch_forecasting._registry import all_objects
 from pytorch_forecasting.metrics import MAE
 from pytorch_forecasting.models.base._base_model_v2 import BaseModel
 
@@ -122,3 +123,32 @@ def test_optimizer_instance():
     model.optimizer = opt
     cfg = model.configure_optimizers()
     assert cfg["optimizer"] is opt
+
+
+def test_forecaster_linkage_all_v2_models():
+    """Every v2 model resolves both ``forecaster`` and compatibility ``pkg``."""
+    forecasters = all_objects(object_types="forecaster_pytorch_v2")
+    assert len(forecasters) > 0
+    for _, forecaster_cls in forecasters:
+        model_cls = forecaster_cls.get_cls()
+        assert model_cls._forecaster() is forecaster_cls
+        assert model_cls.forecaster is forecaster_cls
+        assert model_cls.pkg is forecaster_cls
+
+
+def test_forecaster_legacy_pkg_fallback():
+    """Subclasses still defining ``_pkg`` resolve via ``forecaster``."""
+
+    class LegacyPkgModel(DummyModel):
+        @classmethod
+        def _pkg(cls):
+            return "LegacyForecaster"
+
+    assert LegacyPkgModel.forecaster == "LegacyForecaster"
+    assert LegacyPkgModel.pkg == "LegacyForecaster"
+
+
+def test_forecaster_not_implemented():
+    """Accessing ``forecaster`` without ``_forecaster`` or ``_pkg`` fails cleanly."""
+    with pytest.raises(NotImplementedError, match="_forecaster"):
+        _ = DummyModel.forecaster

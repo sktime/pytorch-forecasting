@@ -1,5 +1,5 @@
 """
-Samformer package container.
+Samformer forecaster.
 """
 
 from pathlib import Path

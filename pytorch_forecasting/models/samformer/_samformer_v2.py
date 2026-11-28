@@ -33,8 +33,8 @@ class Samformer(BaseModel):
     """
 
     @classmethod
-    def _pkg(cls):
-        """Return the package class for this model."""
+    def _forecaster(cls):
+        """Return the forecaster class for this model."""
         from pytorch_forecasting.models.samformer._samformer_forecaster_v2 import (
             SamformerForecaster,
         )

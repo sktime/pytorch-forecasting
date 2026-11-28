@@ -52,7 +52,7 @@ class ModernTCN(BaseModel):
     lr_scheduler_params : dict or None
         Additional keyword arguments passed to the scheduler constructor.
     metadata : dict or None
-        Dataset metadata injected by the package layer (encoder lengths,
+        Dataset metadata injected by the forecaster layer (encoder lengths,
         target dim, etc.).
 
     References
@@ -62,8 +62,8 @@ class ModernTCN(BaseModel):
     """
 
     @classmethod
-    def _pkg(cls):
-        """Return the package class for this model."""
+    def _forecaster(cls):
+        """Return the forecaster class for this model."""
         from pytorch_forecasting.models.modern_tcn._modern_tcn_forecaster_v2 import (
             ModernTCNForecaster,
         )
