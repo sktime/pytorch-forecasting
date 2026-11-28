@@ -154,6 +154,31 @@ def test_GroupNormalizer(kwargs, groups):
         ).all(), "Inverse transform should reverse transform"
 
 
+@pytest.mark.parametrize("scale_by_group", [False, True])
+def test_GroupNormalizer_single_observation_group(scale_by_group):
+    """A group with one observation has no standard deviation.
+
+    ``transform`` falls back to the median scale of the other groups for it, and
+    ``get_parameters`` (used for ``target_scale`` in ``TimeSeriesDataSet``) must
+    return that same scale instead of NaN.
+    """
+    data = pd.DataFrame(dict(a=[1, 1, 2, 2, 3], b=[1.0, 2.0, 4.0, 7.0, 5.0]))
+    normalizer = GroupNormalizer(groups=["a"], scale_by_group=scale_by_group)
+    encoded = normalizer.fit_transform(data["b"], data)
+
+    params = normalizer.get_parameters([3])
+    assert np.isfinite(params).all(), "scale of a single-observation group is NaN"
+    assert np.allclose(params, normalizer.get_norm(data)[-1])
+
+    decoded = normalizer(
+        dict(
+            prediction=torch.tensor([encoded.iloc[-1]]),
+            target_scale=torch.tensor(params).unsqueeze(0),
+        )
+    )
+    assert torch.isclose(decoded, torch.tensor(data.b.iloc[-1]), atol=1e-5).all()
+
+
 def test_EncoderNormalizer_with_limited_history():
     data = torch.rand(100)
     normalizer = EncoderNormalizer(max_length=[1, 2]).fit(data)

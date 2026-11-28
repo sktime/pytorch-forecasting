@@ -1108,6 +1108,12 @@ class GroupNormalizer(TorchNormalizer):
             self.missing_ = {
                 group: scales.median().to_dict() for group, scales in self.norm_.items()
             }
+            # a group with a single observation has no standard deviation (NaN):
+            # use the same fallback that ``get_norm`` uses in ``transform``
+            self.norm_ = {
+                group: scales.fillna(self.missing_[group])
+                for group, scales in self.norm_.items()
+            }
 
         else:
             if self.method == "standard":
@@ -1145,6 +1151,9 @@ class GroupNormalizer(TorchNormalizer):
                 self.norm_["scale"] = self.norm_["center"] + eps
                 self.norm_["center"] = 0.0
             self.missing_ = self.norm_.median().to_dict()
+            # a group with a single observation has no standard deviation (NaN):
+            # use the same fallback that ``get_norm`` uses in ``transform``
+            self.norm_ = self.norm_.fillna(self.missing_)
 
         if (
             (
